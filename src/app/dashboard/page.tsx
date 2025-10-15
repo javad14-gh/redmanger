@@ -8,9 +8,9 @@ import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Ho
 import Link from 'next/link';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Vardiya, SalesReport } from '@/lib/types';
-import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 
@@ -114,28 +114,52 @@ export default function DashboardPage() {
 
   }, [user, firebaseUser, shifts, cashEntries, expenses]);
 
-  const dailySalesChartData = useMemo(() => {
-    if (!salesReports || salesReports.length === 0) return [];
+    const weeklySalesChartData = useMemo(() => {
+        if (!salesReports || salesReports.length === 0) return [];
+        
+        // Sunday is 0 in date-fns, but we want it to be 7 for our sorting.
+        const dayOfWeekMap: { [key: number]: string } = {
+            1: 'Pazartesi', 2: 'Sali', 3: 'Carsamba',
+            4: 'Persembe', 5: 'Cuma', 6: 'Cumartesi', 0: 'Pazar'
+        };
+
+        const salesByDay = salesReports.reduce((acc, report) => {
+            const reportDate = new Date(report.reportDate);
+            const dayKey = format(reportDate, 'yyyy-MM-dd');
+            const dayOfWeek = getDay(reportDate); // Sunday = 0, Monday = 1, ...
+            const dayName = dayOfWeekMap[dayOfWeek];
+            
+            const total = report.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+
+            if (!acc[dayKey]) {
+                acc[dayKey] = { 
+                    date: format(reportDate, 'd MMM', { locale: tr }),
+                    Pazartesi: 0, Sali: 0, Carsamba: 0, Persembe: 0, Cuma: 0, Cumartesi: 0, Pazar: 0 
+                };
+            }
+            if(dayName) {
+                acc[dayKey][dayName] = (acc[dayKey][dayName] || 0) + total;
+            }
+
+            return acc;
+        }, {} as Record<string, { date: string, [key: string]: number | string }>);
+        
+        return Object.values(salesByDay)
+          .sort((a, b) => compareAsc(parse(a.date, 'd MMM', new Date(), {locale: tr}), parse(b.date, 'd MMM', new Date(), {locale: tr})))
+          .slice(-30);
+
+    }, [salesReports]);
     
-    const salesByDay = salesReports.reduce((acc, report) => {
-        const reportDate = new Date(report.reportDate);
-        const dayKey = format(reportDate, 'yyyy-MM-dd');
-        const total = report.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+    const chartConfig = {
+      Pazartesi: { label: 'Pazartesi', color: 'hsl(var(--chart-1))' },
+      Sali: { label: 'Salı', color: 'hsl(var(--chart-2))' },
+      Carsamba: { label: 'Çarşamba', color: 'hsl(var(--chart-3))' },
+      Persembe: { label: 'Perşembe', color: 'hsl(var(--chart-4))' },
+      Cuma: { label: 'Cuma', color: 'hsl(var(--chart-5))' },
+      Cumartesi: { label: 'Cumartesi', color: '#82ca9d' },
+      Pazar: { label: 'Pazar', color: '#ffc658' },
+    };
 
-        if (!acc[dayKey]) {
-            acc[dayKey] = { date: dayKey, total: 0 };
-        }
-        acc[dayKey].total += total;
-
-        return acc;
-    }, {} as Record<string, { date: string, total: number }>);
-    
-    return Object.values(salesByDay)
-      .sort((a, b) => compareAsc(new Date(a.date), new Date(b.date)))
-      .slice(-30) // Get last 30 days
-      .map(d => ({...d, date: format(new Date(d.date), 'd MMM', {locale: tr})}));
-
-  }, [salesReports]);
 
   if (!user) return null;
 
@@ -190,25 +214,20 @@ export default function DashboardPage() {
       </div>
 
        {/* --- Sales Chart --- */}
-       {(user.role === 'genel-mudur' || user.role === 'sube-muduru') && dailySalesChartData.length > 0 && (
+       {(user.role === 'genel-mudur' || user.role === 'sube-muduru') && weeklySalesChartData.length > 0 && (
          <Card>
            <CardHeader>
              <CardTitle className="flex items-center gap-2">
                 <BarChart2 />
-                Son 30 Günlük Satış Özeti
+                Haftalık Satış Trendleri
              </CardTitle>
              <CardDescription>
-                AI ile işlenen raporlardan elde edilen günlük toplam ciro.
+                AI ile işlenen raporlardan elde edilen günlük ciro, haftanın günlerine göre ayrıştırılmıştır.
              </CardDescription>
            </CardHeader>
            <CardContent>
-             <ChartContainer config={{
-                total: {
-                    label: 'Toplam Ciro',
-                    color: 'hsl(var(--chart-1))',
-                }
-             }} className="h-[250px] w-full">
-               <LineChart data={dailySalesChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+             <ChartContainer config={chartConfig} className="h-[300px] w-full">
+               <LineChart data={weeklySalesChartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                  <CartesianGrid vertical={false} />
                  <XAxis
                    dataKey="date"
@@ -217,19 +236,22 @@ export default function DashboardPage() {
                    axisLine={false}
                  />
                  <YAxis
-                  tickFormatter={(value) => `₺${(Number(value) / 1000).toFixed(1)}k`}
+                  tickFormatter={(value) => `₺${(Number(value) / 1000).toFixed(value > 0 ? 1 : 0)}k`}
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
                  />
-                 <Tooltip
+                <Tooltip
                     cursor={true}
                     content={<ChartTooltipContent
-                        formatter={(value) => `₺${Number(value).toFixed(2)}`}
+                        formatter={(value, name) => (Number(value) > 0 ? `₺${Number(value).toFixed(2)}` : null)}
                         indicator="line"
                     />}
                 />
-                 <Line type="monotone" dataKey="total" stroke="var(--color-total)" strokeWidth={2} dot={true} />
+                 <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
+                 {Object.entries(chartConfig).map(([key, config]) => (
+                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} dot={false} name={config.label} />
+                 ))}
                </LineChart>
              </ChartContainer>
            </CardContent>
