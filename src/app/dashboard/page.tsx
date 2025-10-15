@@ -117,16 +117,16 @@ export default function DashboardPage() {
     const weeklySalesChartData = useMemo(() => {
         if (!salesReports || salesReports.length === 0) return [];
         
-        // Sunday is 0 in date-fns, but we want it to be 7 for our sorting.
         const dayOfWeekMap: { [key: number]: string } = {
             1: 'Pazartesi', 2: 'Sali', 3: 'Carsamba',
             4: 'Persembe', 5: 'Cuma', 6: 'Cumartesi', 0: 'Pazar'
         };
+        const allDays = Object.values(dayOfWeekMap);
 
         const salesByDay = salesReports.reduce((acc, report) => {
             const reportDate = new Date(report.reportDate);
             const dayKey = format(reportDate, 'yyyy-MM-dd');
-            const dayOfWeek = getDay(reportDate); // Sunday = 0, Monday = 1, ...
+            const dayOfWeek = getDay(reportDate); 
             const dayName = dayOfWeekMap[dayOfWeek];
             
             const total = report.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
@@ -134,7 +134,7 @@ export default function DashboardPage() {
             if (!acc[dayKey]) {
                 acc[dayKey] = { 
                     date: format(reportDate, 'd MMM', { locale: tr }),
-                    Pazartesi: 0, Sali: 0, Carsamba: 0, Persembe: 0, Cuma: 0, Cumartesi: 0, Pazar: 0 
+                    ...Object.fromEntries(allDays.map(day => [day, null])) // Initialize all days with null
                 };
             }
             if(dayName) {
@@ -142,7 +142,7 @@ export default function DashboardPage() {
             }
 
             return acc;
-        }, {} as Record<string, { date: string, [key: string]: number | string }>);
+        }, {} as Record<string, { date: string, [key: string]: number | string | null }>);
         
         return Object.values(salesByDay)
           .sort((a, b) => compareAsc(parse(a.date, 'd MMM', new Date(), {locale: tr}), parse(b.date, 'd MMM', new Date(), {locale: tr})))
@@ -244,13 +244,16 @@ export default function DashboardPage() {
                 <Tooltip
                     cursor={true}
                     content={<ChartTooltipContent
-                        formatter={(value, name) => (Number(value) > 0 ? `₺${Number(value).toFixed(2)}` : null)}
+                        formatter={(value, name) => {
+                            const numValue = Number(value);
+                            return numValue > 0 ? `₺${numValue.toFixed(2)}` : null;
+                        }}
                         indicator="line"
                     />}
                 />
                  <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
                  {Object.entries(chartConfig).map(([key, config]) => (
-                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} dot={false} name={config.label} />
+                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} dot={false} name={config.label} connectNulls={false} />
                  ))}
                </LineChart>
              </ChartContainer>
