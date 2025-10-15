@@ -80,10 +80,10 @@ const calculateOvertimeForShifts = (shifts: Vardiya[]): string => {
 
 
 export default function DashboardPage() {
-  const { user, firebaseUser, shifts, cashEntries, salesReports } = useApp();
+  const { user, firebaseUser, shifts, cashEntries, salesReports, expenses } = useApp();
 
-  const { monthlyOvertime, pendingCashAmount } = useMemo(() => {
-    if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingCashAmount: 0 };
+  const { monthlyOvertime, pendingNetBalance } = useMemo(() => {
+    if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingNetBalance: 0 };
     
     const now = new Date();
     const monthStart = startOfMonth(now);
@@ -97,13 +97,22 @@ export default function DashboardPage() {
 
     const overtime = calculateOvertimeForShifts(userShifts);
 
-    const pendingAmount = cashEntries
-        .filter(e => e.teslimDurumu === 'beklemede' && (user.role === 'genel-mudur' || e.subeId === user.branchId))
+    // Calculate pending net balance for the branch
+    const branchCashEntries = cashEntries.filter(e => user.role === 'genel-mudur' || e.subeId === user.branchId);
+    const pendingCash = branchCashEntries
+        .filter(e => e.teslimDurumu === 'beklemede')
         .reduce((sum, entry) => sum + entry.nakitMiktari, 0);
+        
+    const branchExpenses = expenses.filter(e => user.role === 'genel-mudur' || e.subeId === user.branchId);
+    const unsettledExpenses = branchExpenses
+        .filter(e => !e.hesaplandi)
+        .reduce((sum, exp) => sum + exp.tutar, 0);
 
-    return { monthlyOvertime: overtime, pendingCashAmount: pendingAmount };
+    const netBalance = pendingCash - unsettledExpenses;
 
-  }, [user, firebaseUser, shifts, cashEntries]);
+    return { monthlyOvertime: overtime, pendingNetBalance: netBalance };
+
+  }, [user, firebaseUser, shifts, cashEntries, expenses]);
 
   const dailySalesChartData = useMemo(() => {
     if (!salesReports || salesReports.length === 0) return [];
@@ -172,10 +181,10 @@ export default function DashboardPage() {
         }
         { user.role === 'sube-muduru' && 
              <StatCard 
-                title="Teslim Edilmemiş Nakit"
-                value={`₺${pendingCashAmount.toFixed(2)}`}
+                title="Bekleyen Net Bakiye"
+                value={`₺${pendingNetBalance.toFixed(2)}`}
                 icon={HandCoins}
-                description="Teslimatı beklenen toplam nakit tutarı."
+                description="Teslim edilecek nakit ve harcamalar sonrası net tutar."
             />
         }
       </div>

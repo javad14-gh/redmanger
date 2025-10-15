@@ -165,9 +165,9 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unset
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <PiggyBank />
-                            Bekleyen Net Bakiye
+                            Teslim Edilmemiş Toplam Nakit
                         </CardTitle>
-                        <CardDescription>Teslim edilmemiş kasa ve henüz düşülmemiş harcamalar sonrası net tutar.</CardDescription>
+                        <CardDescription>Henüz genel müdüre teslim edilmemiş toplam kasa tutarı.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <p className="text-3xl font-bold tracking-tighter">
@@ -686,7 +686,7 @@ export default function CashRegisterPage() {
         const unsettledExpenses = userBranchExpenses
             .filter(e => !e.hesaplandi)
             .reduce((sum, exp) => sum + exp.tutar, 0);
-        return { pendingAmount: pendingCash - unsettledExpenses, unsettledExpensesTotal: unsettledExpenses };
+        return { pendingAmount: pendingCash, unsettledExpensesTotal: unsettledExpenses };
     }, [pendingEntries, userBranchExpenses]);
     
     const handleToggleExpenseStatus = async (expenseId: string, currentStatus: boolean) => {
