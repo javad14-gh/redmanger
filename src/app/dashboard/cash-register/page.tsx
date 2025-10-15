@@ -766,7 +766,7 @@ export default function CashRegisterPage() {
                          />
                     ) : (
                         <Tabs defaultValue="daily">
-                            <TabsList className="grid w-full grid-cols-4">
+                            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                                 <TabsTrigger value="daily">Günlük Kayıt</TabsTrigger>
                                 <TabsTrigger value="expense">Harcama Ekle</TabsTrigger>
                                 <TabsTrigger value="batch">Toplu Teslimat</TabsTrigger>
