@@ -138,6 +138,7 @@ export default function DashboardPage() {
                 };
             }
             if(dayName) {
+                // Set the value for the correct day, leave others as null
                 acc[dayKey][dayName] = (acc[dayKey][dayName] || 0) + total;
             }
 
@@ -253,7 +254,7 @@ export default function DashboardPage() {
                 />
                  <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
                  {Object.entries(chartConfig).map(([key, config]) => (
-                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} dot={false} name={config.label} connectNulls={false} />
+                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} dot={false} name={config.label} connectNulls />
                  ))}
                </LineChart>
              </ChartContainer>
