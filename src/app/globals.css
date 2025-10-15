@@ -82,4 +82,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  body:lang(fa),
+  body:lang(ar) {
+    direction: rtl;
+  }
 }
