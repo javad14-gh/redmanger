@@ -17,7 +17,7 @@ import { CashEntry, Personel, Sube, Expense, AppUser } from '@/lib/types';
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn, getBusinessDate } from '@/lib/utils';
-import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -27,7 +27,7 @@ import { DateRange } from 'react-day-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, personelName, selectedDate, onDateChange }: { branchId: string, personelId: string, todaysEntry?: CashEntry, pendingAmount: number, personelName: string, selectedDate: Date, onDateChange: (date: Date) => void }) => {
+const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unsettledExpenses, personelName, selectedDate, onDateChange }: { branchId: string, personelId: string, todaysEntry?: CashEntry, pendingAmount: number, unsettledExpenses: number, personelName: string, selectedDate: Date, onDateChange: (date: Date) => void }) => {
     const { toast } = useToast();
     const [amount, setAmount] = useState<number | string>('');
     const [isHandedOver, setIsHandedOver] = useState(false);
@@ -95,8 +95,8 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, perso
 
     return (
         <div className="grid md:grid-cols-2 gap-8">
-            <div>
-                <CardHeader className="p-0 mb-4 flex-row justify-between items-center">
+            <div className="space-y-6">
+                <CardHeader className="p-0 flex-row justify-between items-center">
                     <div>
                         <CardTitle>Günün Kaydı</CardTitle>
                         <CardDescription>Günün sonunda kasadaki net nakit tutarını girin.</CardDescription>
@@ -160,7 +160,7 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, perso
                     )}
                 </div>
             </div>
-            <div>
+            <div className="space-y-4">
                  <Card className="bg-muted/50">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -172,6 +172,20 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, perso
                     <CardContent>
                         <p className="text-3xl font-bold tracking-tighter">
                            ₺{pendingAmount.toFixed(2)}
+                        </p>
+                    </CardContent>
+                 </Card>
+                 <Card className="bg-destructive/10 border-destructive/20">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive">
+                            <CircleAlert />
+                            Henüz Düşülmemiş Harcamalar
+                        </CardTitle>
+                         <CardDescription className="text-destructive/80">"Harcama Ekle" sekmesinde girilen ve henüz kasadan ödenmemiş masraflar.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-3xl font-bold tracking-tighter text-destructive">
+                           -₺{unsettledExpenses.toFixed(2)}
                         </p>
                     </CardContent>
                  </Card>
@@ -667,12 +681,12 @@ export default function CashRegisterPage() {
 
     const pendingEntries = useMemo(() => userBranchCashEntries.filter(e => e.teslimDurumu === 'beklemede'), [userBranchCashEntries]);
     
-    const pendingAmount = useMemo(() => {
+    const { pendingAmount, unsettledExpensesTotal } = useMemo(() => {
         const pendingCash = pendingEntries.reduce((sum, entry) => sum + entry.nakitMiktari, 0);
         const unsettledExpenses = userBranchExpenses
             .filter(e => !e.hesaplandi)
             .reduce((sum, exp) => sum + exp.tutar, 0);
-        return pendingCash - unsettledExpenses;
+        return { pendingAmount: pendingCash - unsettledExpenses, unsettledExpensesTotal: unsettledExpenses };
     }, [pendingEntries, userBranchExpenses]);
     
     const handleToggleExpenseStatus = async (expenseId: string, currentStatus: boolean) => {
@@ -764,6 +778,7 @@ export default function CashRegisterPage() {
                                     personelId={firebaseUser.uid}
                                     todaysEntry={todaysEntry}
                                     pendingAmount={pendingAmount}
+                                    unsettledExpenses={unsettledExpensesTotal}
                                     personelName={user.name}
                                     selectedDate={selectedDate}
                                     onDateChange={setSelectedDate}
