@@ -254,7 +254,7 @@ export default function DashboardPage() {
                 />
                  <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
                  {Object.entries(chartConfig).map(([key, config]) => (
-                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} dot={false} name={config.label} connectNulls />
+                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} name={config.label} connectNulls />
                  ))}
                </LineChart>
              </ChartContainer>
