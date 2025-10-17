@@ -139,7 +139,7 @@ export default function DashboardPage() {
             }
             if(dayName) {
                 // Set the value for the correct day, leave others as null
-                acc[dayKey][dayName] = (acc[dayKey][dayName] || 0) + total;
+                (acc[dayKey] as any)[dayName] = ((acc[dayKey] as any)[dayName] || 0) + total;
             }
 
             return acc;
@@ -152,13 +152,13 @@ export default function DashboardPage() {
     }, [salesReports]);
     
     const chartConfig = {
-      Pazartesi: { label: 'Pazartesi', color: 'hsl(var(--chart-1))' },
-      Sali: { label: 'Salı', color: 'hsl(var(--chart-2))' },
-      Carsamba: { label: 'Çarşamba', color: 'hsl(var(--chart-3))' },
-      Persembe: { label: 'Perşembe', color: 'hsl(var(--chart-4))' },
-      Cuma: { label: 'Cuma', color: 'hsl(var(--chart-5))' },
-      Cumartesi: { label: 'Cumartesi', color: '#82ca9d' },
-      Pazar: { label: 'Pazar', color: '#ffc658' },
+      Pazartesi: { label: 'Pazartesi', color: '#f7b705' },
+      Sali: { label: 'Salı', color: '#f70505' },
+      Carsamba: { label: 'Çarşamba', color: '#039103' },
+      Persembe: { label: 'Perşembe', color: '#04d8db' },
+      Cuma: { label: 'Cuma', color: '#043adb' },
+      Cumartesi: { label: 'Cumartesi', color: '#db04d8' },
+      Pazar: { label: 'Pazar', color: '#0d000d' },
     };
 
 
