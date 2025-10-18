@@ -17,7 +17,7 @@ import { CashEntry, Personel, Sube, Expense, AppUser } from '@/lib/types';
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn, getBusinessDate } from '@/lib/utils';
-import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert } from 'lucide-react';
+import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -474,6 +474,7 @@ type ReportItem = (CashEntry & { type: 'cash' }) | (Expense & { type: 'expense';
 const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { cashEntries: CashEntry[], expenses: Expense[], branches: Sube[], showBranchFilter: boolean }) => {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [statusFilter, setStatusFilter] = useState<'all' | 'beklemede' | 'teslim edildi'>('all');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'cash' | 'expense'>('all');
     const [branchFilter, setBranchFilter] = useState<'all' | string>('all');
     
     const branchMap = useMemo(() => {
@@ -499,6 +500,9 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
         if (dateRange?.to) {
              result = result.filter(e => e.islemTarihi <= startOfDay(dateRange.to!));
         }
+        if (typeFilter !== 'all') {
+            result = result.filter(entry => entry.type === typeFilter);
+        }
         if (statusFilter !== 'all') {
             result = result.filter(entry => {
                 if (entry.type === 'cash') return entry.teslimDurumu === statusFilter;
@@ -514,7 +518,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
         }
 
         return result.sort((a,b) => b.islemTarihi.getTime() - a.islemTarihi.getTime());
-    }, [combinedEntries, dateRange, statusFilter, branchFilter, showBranchFilter]);
+    }, [combinedEntries, dateRange, statusFilter, branchFilter, showBranchFilter, typeFilter]);
 
     const totalAmount = useMemo(() => {
         return filteredEntries.reduce((sum, entry) => {
@@ -564,6 +568,17 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                     />
                     </PopoverContent>
                 </Popover>
+                 <Select value={typeFilter} onValueChange={(value: 'all' | 'cash' | 'expense') => setTypeFilter(value)}>
+                    <SelectTrigger className="w-[180px]">
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="İşlem Türü" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tüm İşlemler</SelectItem>
+                        <SelectItem value="cash">Sadece Kasa Girişleri</SelectItem>
+                        <SelectItem value="expense">Sadece Harcamalar</SelectItem>
+                    </SelectContent>
+                </Select>
                 <Select value={statusFilter} onValueChange={(value: 'all' | 'beklemede' | 'teslim edildi') => setStatusFilter(value)}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Durum" />
