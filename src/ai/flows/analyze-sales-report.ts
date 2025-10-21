@@ -45,6 +45,51 @@ const SalesReportOutputSchema = z.object({
 export type SalesReportOutput = z.infer<typeof SalesReportOutputSchema>;
 
 /**
+ * Standardizes and merges payment breakdown items from an AI analysis.
+ * @param breakdown The raw payment breakdown from the AI.
+ * @returns A cleaned and aggregated list of payment breakdown items.
+ */
+const standardizePaymentBreakdown = (breakdown: PaymentBreakdownItem[]): PaymentBreakdownItem[] => {
+    const standardMap: { [key: string]: string[] } = {
+        'Nakit': ['nakit', 'nakıt', 'nkt'],
+        'Kredi Kartı': ['kredi', 'k.karti', 'kk', 'visa', 'mastercard', 'k.kartı', 'kredi karti'],
+        'Yemek Kartı': ['yemek', 'y.karti', 'y.kartı', 'sodexo', 'ticket', 'multinet', 'setcard'],
+        'Ödenmez': ['odenmez', 'ödenmez'],
+    };
+
+    const aggregated: { [key: string]: number } = {};
+
+    breakdown.forEach(item => {
+        const rawMethod = item.method.toLowerCase().replace(/[^a-z0-9]/gi, '');
+        let standardMethod = 'Diğer'; // Default category
+
+        for (const key in standardMap) {
+            if (standardMap[key].some(alias => rawMethod.includes(alias))) {
+                standardMethod = key;
+                break;
+            }
+        }
+        
+        // If it's still 'Diğer', use the original but capitalized name
+        if (standardMethod === 'Diğer') {
+             standardMethod = item.method.charAt(0).toUpperCase() + item.method.slice(1);
+        }
+
+        if (aggregated[standardMethod]) {
+            aggregated[standardMethod] += item.amount;
+        } else {
+            aggregated[standardMethod] = item.amount;
+        }
+    });
+
+    return Object.entries(aggregated).map(([method, amount]) => ({
+        method,
+        amount,
+    }));
+};
+
+
+/**
  * Public function to trigger the sales report analysis flow.
  * @param input The sales report image as a data URI.
  * @returns A promise that resolves to the structured sales data.
@@ -84,6 +129,13 @@ const analyzeSalesReportFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI model did not return a valid output.');
     }
-    return output;
+
+    // Standardize the payment breakdown after getting the result
+    const standardizedPaymentBreakdown = standardizePaymentBreakdown(output.paymentBreakdown);
+
+    return {
+        ...output,
+        paymentBreakdown: standardizedPaymentBreakdown,
+    };
   }
 );
