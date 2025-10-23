@@ -255,7 +255,7 @@ export default function DashboardPage() {
                 />
                  <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
                  {Object.entries(chartConfig).map(([key, config]) => (
-                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} name={config.label} connectNulls dot={false} />
+                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} name={config.label} connectNulls />
                  ))}
                  {weeklySalesChartData.map((item, index) => (
                     item.isMonday && <ReferenceLine key={`ref-${index}`} x={item.date} stroke="hsl(var(--border))" strokeDasharray="3 3" />
