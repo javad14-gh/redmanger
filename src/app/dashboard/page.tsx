@@ -10,7 +10,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { Vardiya, SalesReport } from '@/lib/types';
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 
@@ -134,6 +134,7 @@ export default function DashboardPage() {
             if (!acc[dayKey]) {
                 acc[dayKey] = { 
                     date: format(reportDate, 'd MMM', { locale: tr }),
+                    isMonday: dayOfWeek === 1,
                     ...Object.fromEntries(allDays.map(day => [day, null])) // Initialize all days with null
                 };
             }
@@ -143,10 +144,10 @@ export default function DashboardPage() {
             }
 
             return acc;
-        }, {} as Record<string, { date: string, [key: string]: number | string | null }>);
+        }, {} as Record<string, { date: string, isMonday: boolean, [key: string]: number | string | boolean | null }>);
         
         return Object.values(salesByDay)
-          .sort((a, b) => compareAsc(parse(a.date, 'd MMM', new Date(), {locale: tr}), parse(b.date, 'd MMM', new Date(), {locale: tr})))
+          .sort((a, b) => compareAsc(parse(a.date as string, 'd MMM', new Date(), {locale: tr}), parse(b.date as string, 'd MMM', new Date(), {locale: tr})))
           .slice(-30);
 
     }, [salesReports]);
@@ -254,7 +255,10 @@ export default function DashboardPage() {
                 />
                  <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
                  {Object.entries(chartConfig).map(([key, config]) => (
-                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} name={config.label} connectNulls />
+                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} name={config.label} connectNulls dot={false} />
+                 ))}
+                 {weeklySalesChartData.map((item, index) => (
+                    item.isMonday && <ReferenceLine key={`ref-${index}`} x={item.date} stroke="hsl(var(--border))" strokeDasharray="3 3" />
                  ))}
                </LineChart>
              </ChartContainer>
