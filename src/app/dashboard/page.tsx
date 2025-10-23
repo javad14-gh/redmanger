@@ -148,7 +148,7 @@ export default function DashboardPage() {
         
         return Object.values(salesByDay)
           .sort((a, b) => compareAsc(parse(a.date as string, 'd MMM', new Date(), {locale: tr}), parse(b.date as string, 'd MMM', new Date(), {locale: tr})))
-          .slice(-30);
+          .slice(-45);
 
     }, [salesReports]);
     
