@@ -38,7 +38,7 @@ const navItems = [
       { href: '/dashboard/management/checklists', label: 'Checklist Tanımları' },
     ]
   },
-  { href: '/dashboard/ai-tools', icon: Bot, label: 'AI Araçları', roles: ['genel-mudur', 'sube-muduru'] },
+  // { href: '/dashboard/ai-tools', icon: Bot, label: 'AI Araçları', roles: ['genel-mudur', 'sube-muduru'] },
 ];
 
 const SidebarCollapseButton = () => {
