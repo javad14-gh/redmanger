@@ -27,6 +27,7 @@ const navItems = [
       { href: '/dashboard/reports/sales', label: 'Satış Analizi', roles: ['genel-mudur', 'sube-muduru']},
     ]
   },
+  { href: '/dashboard/ai-tools', icon: Bot, label: 'Satış Girişi', roles: ['genel-mudur', 'sube-muduru'] },
   { 
     href: '/dashboard/management', 
     icon: Settings, 
@@ -38,7 +39,6 @@ const navItems = [
       { href: '/dashboard/management/checklists', label: 'Checklist Tanımları' },
     ]
   },
-  // { href: '/dashboard/ai-tools', icon: Bot, label: 'AI Araçları', roles: ['genel-mudur', 'sube-muduru'] },
 ];
 
 const SidebarCollapseButton = () => {
