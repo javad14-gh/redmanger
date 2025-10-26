@@ -328,7 +328,7 @@ export default function DashboardPage() {
         </p>
       </div>
       
-       {user.role === 'calisan' && <EmployeeClockInCard /> }
+       {(user.role === 'calisan' || user.role === 'sube-muduru') && <EmployeeClockInCard /> }
 
       {/* --- STAT CARDS --- */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
