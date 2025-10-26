@@ -114,12 +114,17 @@ const EmployeeClockInCard = () => {
             } else if (todaysShift.girisSaati && todaysShift.cikisSaati) {
                 setStatusMessage('Bugünkü vardiyanız tamamlandı.');
             } else {
-                setStatusMessage('Bugün için giriş yapmaya hazırsınız.');
+                if (todaysShift.planliGiris) {
+                    setStatusMessage(`Vardiyanız saat ${format(new Date(todaysShift.planliGiris), 'HH:mm')}'da başlıyor. Giriş yapmaya hazırsınız.`);
+                } else {
+                    setStatusMessage('Bugün için giriş yapmaya hazırsınız.');
+                }
             }
         } else {
             setStatusMessage('Bugün için planlanmış bir vardiyanız yok.');
         }
     }, [todaysShift]);
+
 
     const handleClockAction = (action: 'in' | 'out') => {
         if (!navigator.geolocation) {
@@ -138,7 +143,7 @@ const EmployeeClockInCard = () => {
                 const { latitude, longitude } = position.coords;
                 const distance = getDistanceInMeters(latitude, longitude, userBranch.latitude!, userBranch.longitude!);
 
-                if (distance > 200) { // 200 meters radius
+                if (distance > 50) { // 50 meters radius
                     toast({ variant: 'destructive', title: 'Uzak Konum', description: `Şubeden ${Math.round(distance)} metre uzaktasınız. Giriş/çıkış yapmak için şubede olmalısınız.` });
                     setIsLoading(false);
                     return;
