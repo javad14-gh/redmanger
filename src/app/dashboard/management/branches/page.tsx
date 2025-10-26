@@ -6,7 +6,7 @@ import { useApp } from '@/hooks/use-app';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Loader2, Building } from 'lucide-react';
+import { PlusCircle, Loader2, Building, Edit } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,26 +15,32 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
 import { Sube } from '@/lib/types';
 
 
 const branchSchema = z.object({
   adi: z.string().min(3, 'Şube adı en az 3 karakter olmalıdır.'),
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
 });
 
 type BranchFormData = z.infer<typeof branchSchema>;
 
-const BranchForm = ({ onFormSubmit, closeDialog }: { onFormSubmit: (data: BranchFormData) => Promise<void>, closeDialog: () => void }) => {
+const BranchForm = ({ branch, onFormSubmit, closeDialog }: { branch?: Sube, onFormSubmit: (data: BranchFormData, branchId?: string) => Promise<void>, closeDialog: () => void }) => {
     const form = useForm<BranchFormData>({
         resolver: zodResolver(branchSchema),
-        defaultValues: {
+        defaultValues: branch ? {
+            adi: branch.adi,
+            latitude: branch.latitude,
+            longitude: branch.longitude,
+        } : {
             adi: '',
         },
     });
 
     const onSubmit = async (data: BranchFormData) => {
-        await onFormSubmit(data);
+        await onFormSubmit(data, branch?.subeId);
         form.reset();
         closeDialog();
     };
@@ -49,6 +55,22 @@ const BranchForm = ({ onFormSubmit, closeDialog }: { onFormSubmit: (data: Branch
                         <FormMessage />
                     </FormItem>
                 )}/>
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="latitude" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Latitude (Enlem)</FormLabel>
+                            <FormControl><Input type="number" step="any" placeholder="Örn: 39.925533" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="longitude" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Longitude (Boylam)</FormLabel>
+                            <FormControl><Input type="number" step="any" placeholder="Örn: 32.866287" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={closeDialog}>İptal</Button>
                     <Button type="submit" disabled={form.formState.isSubmitting}>
@@ -65,22 +87,38 @@ export default function BranchManagementPage() {
     const { user, branches, isLoading } = useApp();
     const { toast } = useToast();
     const [isFormOpen, setFormOpen] = useState(false);
+    const [editingBranch, setEditingBranch] = useState<Sube | undefined>(undefined);
 
-    const handleFormSubmit = async (data: BranchFormData) => {
+    const handleFormSubmit = async (data: BranchFormData, branchId?: string) => {
         try {
-            const newBranchRef = doc(collection(db, "branches"));
-            const newBranch: Sube = {
-                subeId: newBranchRef.id,
-                adi: data.adi,
-            };
-            await setDoc(newBranchRef, newBranch);
-            toast({ title: 'Başarılı', description: 'Yeni şube başarıyla oluşturuldu.' });
+            if (branchId) {
+                // Update
+                const branchRef = doc(db, "branches", branchId);
+                await updateDoc(branchRef, data);
+                toast({ title: 'Başarılı', description: 'Şube bilgileri güncellendi.' });
+            } else {
+                // Create
+                const newBranchRef = doc(collection(db, "branches"));
+                const newBranch: Sube = {
+                    subeId: newBranchRef.id,
+                    adi: data.adi,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                };
+                await setDoc(newBranchRef, newBranch);
+                toast({ title: 'Başarılı', description: 'Yeni şube başarıyla oluşturuldu.' });
+            }
         } catch (error) {
-            console.error("Error creating branch: ", error);
-            toast({ title: 'Hata', description: 'Şube oluşturulurken bir hata oluştu.', variant: 'destructive' });
+            console.error("Error creating/updating branch: ", error);
+            toast({ title: 'Hata', description: 'Şube kaydedilirken bir hata oluştu.', variant: 'destructive' });
         }
     };
     
+    const openForm = (branch?: Sube) => {
+        setEditingBranch(branch);
+        setFormOpen(true);
+    }
+
     if (user?.role !== 'genel-mudur') {
         return (
           <Card>
@@ -97,21 +135,21 @@ export default function BranchManagementPage() {
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">Şube Yönetimi</h1>
                     <p className="text-muted-foreground">Yeni şubeler ekleyin ve mevcut şubeleri yönetin.</p>
                 </div>
-                <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-                    <DialogTrigger asChild>
-                        <Button><PlusCircle/> Yeni Şube Ekle</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Yeni Şube Ekle</DialogTitle>
-                        </DialogHeader>
-                        <BranchForm
-                            onFormSubmit={handleFormSubmit}
-                            closeDialog={() => setFormOpen(false)}
-                        />
-                    </DialogContent>
-                </Dialog>
+                <Button onClick={() => openForm()}><PlusCircle/> Yeni Şube Ekle</Button>
             </div>
+
+            <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingBranch ? 'Şubeyi Düzenle' : 'Yeni Şube Ekle'}</DialogTitle>
+                    </DialogHeader>
+                    <BranchForm
+                        branch={editingBranch}
+                        onFormSubmit={handleFormSubmit}
+                        closeDialog={() => setFormOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
             <Card>
                 <CardHeader>
@@ -125,21 +163,29 @@ export default function BranchManagementPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Şube ID</TableHead>
                                         <TableHead>Şube Adı</TableHead>
+                                        <TableHead>Latitude</TableHead>
+                                        <TableHead>Longitude</TableHead>
+                                        <TableHead className="text-right">İşlemler</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {branches.length > 0 ? (
                                         branches.map(branch => (
                                             <TableRow key={branch.subeId}>
-                                                <TableCell className="font-mono text-xs">{branch.subeId}</TableCell>
                                                 <TableCell className="font-medium">{branch.adi}</TableCell>
+                                                <TableCell className="font-mono text-xs">{branch.latitude || 'N/A'}</TableCell>
+                                                <TableCell className="font-mono text-xs">{branch.longitude || 'N/A'}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon" onClick={() => openForm(branch)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="h-24 text-center">
+                                            <TableCell colSpan={4} className="h-24 text-center">
                                                 Henüz şube eklenmemiş.
                                             </TableCell>
                                         </TableRow>

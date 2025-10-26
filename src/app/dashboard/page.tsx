@@ -1,17 +1,23 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Hourglass, HandCoins, BarChart2 } from 'lucide-react';
+import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Hourglass, HandCoins, BarChart2, LogIn, LogOut, MapPin, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { Vardiya, SalesReport } from '@/lib/types';
-import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay } from 'date-fns';
+import { Vardiya, SalesReport, Sube } from '@/lib/types';
+import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Button } from '@/components/ui/button';
+import { getBusinessDate, getDistanceInMeters } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, setDoc, collection, Timestamp } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 
 const DashboardLinkCard = ({ href, icon: Icon, title, description, roles, permission }: { href: string; icon: React.ElementType; title: string; description: string; roles?: string[]; permission?: string; }) => {
@@ -76,6 +82,135 @@ const calculateOvertimeForShifts = (shifts: Vardiya[]): string => {
     const hours = Math.floor(absMins / 60);
     const minutes = absMins % 60;
     return `${sign}${hours} sa ${minutes} dk`;
+};
+
+const EmployeeClockInCard = () => {
+    const { user, firebaseUser, shifts, branches } = useApp();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('Durum kontrol ediliyor...');
+
+    const today = getBusinessDate();
+    const todaysShift = useMemo(() => {
+        if (!firebaseUser) return undefined;
+        return shifts.find(s => 
+            s.personelId === firebaseUser.uid && 
+            isSameDay(new Date(s.tarih), today)
+        );
+    }, [shifts, firebaseUser, today]);
+
+    const userBranch = useMemo(() => {
+        if (!user?.branchId) return undefined;
+        return branches.find(b => b.subeId === user.branchId);
+    }, [branches, user]);
+
+    const canClockIn = todaysShift && !todaysShift.girisSaati;
+    const canClockOut = todaysShift && todaysShift.girisSaati && !todaysShift.cikisSaati;
+
+    useEffect(() => {
+        if (todaysShift) {
+            if (todaysShift.girisSaati && !todaysShift.cikisSaati) {
+                setStatusMessage(`Giriş yapıldı: ${format(new Date(todaysShift.girisSaati), 'HH:mm')}`);
+            } else if (todaysShift.girisSaati && todaysShift.cikisSaati) {
+                setStatusMessage('Bugünkü vardiyanız tamamlandı.');
+            } else {
+                setStatusMessage('Bugün için giriş yapmaya hazırsınız.');
+            }
+        } else {
+            setStatusMessage('Bugün için planlanmış bir vardiyanız yok.');
+        }
+    }, [todaysShift]);
+
+    const handleClockAction = (action: 'in' | 'out') => {
+        if (!navigator.geolocation) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Tarayıcınız konum servisini desteklemiyor.' });
+            return;
+        }
+
+        if (!userBranch?.latitude || !userBranch?.longitude) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Şubenizin konumu tanımlanmamış. Lütfen yöneticinizle görüşün.' });
+            return;
+        }
+
+        setIsLoading(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                const distance = getDistanceInMeters(latitude, longitude, userBranch.latitude!, userBranch.longitude!);
+
+                if (distance > 200) { // 200 meters radius
+                    toast({ variant: 'destructive', title: 'Uzak Konum', description: `Şubeden ${Math.round(distance)} metre uzaktasınız. Giriş/çıkış yapmak için şubede olmalısınız.` });
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Location is valid, proceed to save
+                saveClockAction(action);
+            },
+            (error) => {
+                let message = 'Konum alınamadı. Lütfen tarayıcı izinlerinizi kontrol edin.';
+                if (error.code === 1) message = 'Konum izni reddedildi. Lütfen ayarlardan izin verin.';
+                toast({ variant: 'destructive', title: 'Konum Hatası', description: message });
+                setIsLoading(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+    
+    const saveClockAction = async (action: 'in' | 'out') => {
+        if (!todaysShift) {
+             toast({ variant: 'destructive', title: 'Hata', description: 'Bugün için vardiya bulunamadı.' });
+             setIsLoading(false);
+             return;
+        }
+
+        try {
+            const shiftRef = doc(db, 'shifts', todaysShift.vardiyaId);
+            const now = Timestamp.now();
+            if(action === 'in') {
+                await updateDoc(shiftRef, { girisSaati: now });
+                toast({ title: 'Başarılı!', description: `Giriş saatiniz ${format(now.toDate(), 'HH:mm')} olarak kaydedildi.`});
+            } else {
+                await updateDoc(shiftRef, { cikisSaati: now });
+                 toast({ title: 'Başarılı!', description: `Çıkış saatiniz ${format(now.toDate(), 'HH:mm')} olarak kaydedildi.`});
+            }
+        } catch (error) {
+            console.error("Error saving clock action:", error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Saat bilgisi kaydedilirken bir sorun oluştu.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    return (
+        <Card className="bg-primary/5 dark:bg-primary/10 border-primary/20">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <MapPin />
+                    Hızlı Giriş / Çıkış
+                </CardTitle>
+                <CardDescription>
+                    Konumunuz doğrulandıktan sonra giriş veya çıkış saatinizi kaydedin.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="text-center font-semibold text-lg p-4 bg-background rounded-md">
+                    {statusMessage}
+                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <Button size="lg" disabled={!canClockIn || isLoading} onClick={() => handleClockAction('in')}>
+                        {isLoading && canClockIn ? <Loader2 className="animate-spin" /> : <LogIn />}
+                        Giriş Yap
+                    </Button>
+                    <Button size="lg" variant="outline" disabled={!canClockOut || isLoading} onClick={() => handleClockAction('out')}>
+                         {isLoading && canClockOut ? <Loader2 className="animate-spin" /> : <LogOut />}
+                        Çıkış Yap
+                    </Button>
+                 </div>
+            </CardContent>
+        </Card>
+    );
 };
 
 
@@ -192,6 +327,8 @@ export default function DashboardPage() {
           {getRoleDescription()}
         </p>
       </div>
+      
+       {user.role === 'calisan' && <EmployeeClockInCard /> }
 
       {/* --- STAT CARDS --- */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

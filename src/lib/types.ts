@@ -1,6 +1,8 @@
 export interface Sube {
   subeId: string;
   adi: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export type UserRole = 'genel-mudur' | 'sube-muduru' | 'calisan' | 'sistem-yoneticisi';
