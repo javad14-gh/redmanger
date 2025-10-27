@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, setDoc, collection, Timestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 const DashboardLinkCard = ({ href, icon: Icon, title, description, roles, permission }: { href: string; icon: React.ElementType; title: string; description: string; roles?: string[]; permission?: string; }) => {
@@ -89,6 +90,7 @@ const EmployeeClockInCard = () => {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('Durum kontrol ediliyor...');
+    const [permissionAlert, setPermissionAlert] = useState<{ isOpen: boolean; message: string; action?: 'in' | 'out' }>({ isOpen: false, message: '' });
 
     const today = getBusinessDate();
     const todaysShift = useMemo(() => {
@@ -128,7 +130,10 @@ const EmployeeClockInCard = () => {
 
     const handleClockAction = (action: 'in' | 'out') => {
         if (!navigator.geolocation) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Tarayıcınız konum servisini desteklemiyor.' });
+             setPermissionAlert({
+                isOpen: true,
+                message: 'Tarayıcınız konum servisini desteklemiyor. Lütfen farklı bir tarayıcı deneyin.',
+            });
             return;
         }
 
@@ -153,9 +158,11 @@ const EmployeeClockInCard = () => {
                 saveClockAction(action);
             },
             (error) => {
-                let message = 'Konum alınamadı. Lütfen tarayıcı izinlerinizi kontrol edin.';
-                if (error.code === 1) message = 'Konum izni reddedildi. Lütfen ayarlardan izin verin.';
-                toast({ variant: 'destructive', title: 'Konum Hatası', description: message });
+                let message = 'Konum bilgisi alınamadı. Bu özelliği kullanmak için konum izni vermeniz gerekmektedir. Lütfen tarayıcı ayarlarınızdan konum iznini etkinleştirin.';
+                if (error.code === 1) { // PERMISSION_DENIED
+                     message = 'Konum izni reddedildi. Giriş/çıkış yapmak için tarayıcı ayarlarından bu site için konum iznini etkinleştirmeniz gerekmektedir.';
+                }
+                setPermissionAlert({ isOpen: true, message, action });
                 setIsLoading(false);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -189,6 +196,26 @@ const EmployeeClockInCard = () => {
 
 
     return (
+        <>
+        <AlertDialog open={permissionAlert.isOpen} onOpenChange={(isOpen) => setPermissionAlert(prev => ({...prev, isOpen}))}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Konum İzni Gerekli</AlertDialogTitle>
+                    <AlertDialogDescription>
+                       {permissionAlert.message}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                    {permissionAlert.action && (
+                        <AlertDialogAction onClick={() => handleClockAction(permissionAlert.action!)}>
+                            Tekrar Dene
+                        </AlertDialogAction>
+                    )}
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         <Card className="bg-primary/5 dark:bg-primary/10 border-primary/20">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -215,6 +242,7 @@ const EmployeeClockInCard = () => {
                  </div>
             </CardContent>
         </Card>
+        </>
     );
 };
 
