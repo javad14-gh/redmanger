@@ -158,14 +158,27 @@ const EmployeeClockInCard = () => {
                 saveClockAction(action);
             },
             (error) => {
-                let message = 'Konum bilgisi alınamadı. Bu özelliği kullanmak için konum izni vermeniz gerekmektedir. Lütfen tarayıcı ayarlarınızdan konum iznini etkinleştirin.';
-                if (error.code === 1) { // PERMISSION_DENIED
-                     message = 'Konum izni reddedildi. Giriş/çıkış yapmak için tarayıcı ayarlarından bu site için konum iznini etkinleştirmeniz gerekmektedir.';
+                let message;
+                switch (error.code) {
+                    case 1: // PERMISSION_DENIED
+                        message = 'Konum izni reddedildi. Giriş/çıkış yapmak için tarayıcı ayarlarından bu site için konum iznini etkinleştirmeniz gerekmektedir.';
+                        break;
+                    case 2: // POSITION_UNAVAILABLE
+                        message = 'Konumunuz şu anda tespit edilemiyor. Lütfen açık bir alanda tekrar deneyin veya internet bağlantınızı kontrol edin.';
+                        break;
+                    case 3: // TIMEOUT
+                        message = 'Konum bilgisi alınırken zaman aşımı oluştu. Lütfen sinyalinizin güçlü olduğundan emin olup tekrar deneyin.';
+                        break;
+                    default:
+                        message = 'Konum bilgisi alınamadı. Bu özelliği kullanmak için konum izni vermeniz gerekmektedir.';
+                        break;
                 }
                 setPermissionAlert({ isOpen: true, message, action });
                 setIsLoading(false);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            {
+                timeout: 10000, // 10 seconds
+            }
         );
     };
     
@@ -200,7 +213,7 @@ const EmployeeClockInCard = () => {
         <AlertDialog open={permissionAlert.isOpen} onOpenChange={(isOpen) => setPermissionAlert(prev => ({...prev, isOpen}))}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Konum İzni Gerekli</AlertDialogTitle>
+                    <AlertDialogTitle>Konum Hatası</AlertDialogTitle>
                     <AlertDialogDescription>
                        {permissionAlert.message}
                     </AlertDialogDescription>
@@ -301,7 +314,7 @@ export default function DashboardPage() {
 
             if (!acc[dayKey]) {
                 acc[dayKey] = { 
-                    date: format(reportDate, 'd MMM', { locale: tr }),
+                    date: reportDate, // Keep as a Date object initially
                     isMonday: dayOfWeek === 1,
                     ...Object.fromEntries(allDays.map(day => [day, null])) // Initialize all days with null
                 };
@@ -312,10 +325,12 @@ export default function DashboardPage() {
             }
 
             return acc;
-        }, {} as Record<string, { date: string, isMonday: boolean, [key: string]: number | string | boolean | null }>);
+        }, {} as Record<string, { date: Date, isMonday: boolean, [key: string]: number | string | boolean | null | Date }>);
         
+        // Now sort by date and then format the date for display
         return Object.values(salesByDay)
-          .sort((a, b) => compareAsc(parse(a.date as string, 'd MMM', new Date(), {locale: tr}), parse(b.date as string, 'd MMM', new Date(), {locale: tr})))
+          .sort((a, b) => compareAsc(a.date, b.date))
+          .map(item => ({...item, date: format(item.date, 'd MMM', { locale: tr})}))
           .slice(-45);
 
     }, [salesReports]);
