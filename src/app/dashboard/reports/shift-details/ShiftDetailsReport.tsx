@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 
 
@@ -195,6 +196,7 @@ export function ShiftDetailsReport() {
                         </TableCell>
                         {filteredStaff.length > 0 ? filteredStaff.map(personel => {
                             const shift = getShiftForCell(personel.personelId, day);
+                            const isLate = shift?.girisSaati && shift?.planliGiris && new Date(shift.girisSaati) > new Date(shift.planliGiris);
                             return (
                                 <TableCell key={personel.personelId} className="text-center p-2 text-xs">
                                   {shift ? (
@@ -202,7 +204,7 @@ export function ShiftDetailsReport() {
                                       <Badge variant="secondary">İzinli</Badge>
                                     ) : (
                                       <div className='flex flex-col'>
-                                        {shift.girisSaati && <span className='font-semibold'>{format(new Date(shift.girisSaati), 'HH:mm')}</span>}
+                                        {shift.girisSaati && <span className={cn('font-semibold', isLate && 'text-destructive')}>{format(new Date(shift.girisSaati), 'HH:mm')}</span>}
                                         {shift.cikisSaati && <span className='text-muted-foreground'>{format(new Date(shift.cikisSaati), 'HH:mm')}</span>}
                                         {!shift.girisSaati && shift.planliGiris && <span className='text-blue-500'>Planlandı</span>}
                                       </div>
