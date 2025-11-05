@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Clock, User, Save, Users, CalendarDays, Check, X, Pencil, Loader2, Ban, LogIn, LogOut } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, Save, Users, CalendarDays, Check, X, Pencil, Loader2, Ban, LogIn, LogOut, Share2 } from 'lucide-react';
 import { format, isSameDay, differenceInMinutes, set, addDays, startOfDay, addMinutes } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,6 +24,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 
 // Helper to combine a date and a time string (HH:mm) into a Date object
@@ -310,6 +312,8 @@ const ShiftPlanningTab = () => {
     const [selectedDate, setSelectedDate] = useState<Date>(getBusinessDate());
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isShareDialogOpen, setShareDialogOpen] = useState(false);
+    const [shareableText, setShareableText] = useState('');
 
     const [shiftData, setShiftData] = useState<Record<string, { tur: 'calisma' | 'izinli', planliGiris: string, planliSure: string }>>({});
 
@@ -404,6 +408,38 @@ const ShiftPlanningTab = () => {
             setIsSaving(false);
         }
     };
+    
+    const generateShareableText = () => {
+        let text = `**Vardiya Planı - ${format(selectedDate, 'd MMMM yyyy, EEEE', { locale: tr })}**\n\n`;
+        
+        visibleStaff.forEach(personel => {
+            const shift = dailyShifts.get(personel.personelId);
+            text += `- ${personel.adi}: `;
+            
+            if (shift?.tur === 'izinli') {
+                text += `izinli\n`;
+            } else if (shift?.planliGiris && shift?.planliSureDakika) {
+                const startTime = format(new Date(shift.planliGiris), 'HH:mm');
+                const endTime = format(addMinutes(new Date(shift.planliGiris), shift.planliSureDakika), 'HH:mm');
+                text += `${startTime} - ${endTime} (${shift.planliSureDakika / 60} saat)\n`;
+            } else {
+                text += `Tanımsız\n`;
+            }
+        });
+        
+        text += '\nİyi çalışmalar!';
+        setShareableText(text);
+        setShareDialogOpen(true);
+    };
+
+    const handleCopyText = () => {
+        navigator.clipboard.writeText(shareableText).then(() => {
+            toast({ title: 'Kopyalandı!', description: 'Vardiya planı panoya kopyalandı.' });
+            setShareDialogOpen(false);
+        }).catch(err => {
+            toast({ title: 'Hata', description: 'Metin kopyalanamadı.', variant: 'destructive' });
+        });
+    };
 
 
     const renderShiftInfo = (personelId: string) => {
@@ -416,133 +452,159 @@ const ShiftPlanningTab = () => {
     }
 
     return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between">
-                <div className='space-y-1.5'>
-                    <CardTitle className="flex items-center gap-2">
-                        <CalendarDays />
-                        Vardiya Planlama
-                    </CardTitle>
-                    <CardDescription>
-                       Personel için günlük vardiyaları planlayın.
-                    </CardDescription>
-                </div>
-                 <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant={'outline'}
-                            className={cn('w-[280px] justify-start text-left font-normal', !selectedDate && 'text-muted-foreground')}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {selectedDate ? format(selectedDate, 'PPP', { locale: tr }) : <span>Tarih seçin</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(date) => { if (date) { setSelectedDate(date); setIsEditing(false); } }}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
-            </CardHeader>
-            <CardContent>
-                {isEditing ? (
-                    <>
-                    <Alert variant="default" className="mb-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Düzenleme Modu</AlertTitle>
-                        <AlertDescription>
-                            Personel için çalışma günü/izin günü seçimi yapın ve saatleri ayarlayın. İşiniz bittiğinde "Tümünü Kaydet" butonuna tıklayın.
-                        </AlertDescription>
-                    </Alert>
-                    <div className="rounded-md border">
-                        <Table>
-                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>Personel</TableHead>
-                                    <TableHead>Tür</TableHead>
-                                    <TableHead>Planlama</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {visibleStaff.map(personel => (
-                                    <TableRow key={personel.personelId}>
-                                        <TableCell className="font-medium">{personel.adi}</TableCell>
-                                        <TableCell>
-                                            <RadioGroup
-                                                value={shiftData[personel.personelId]?.tur || 'calisma'}
-                                                onValueChange={(val: 'calisma' | 'izinli') => handleShiftDataChange(personel.personelId, 'tur', val)}
-                                                className="flex gap-4"
-                                            >
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="calisma" id={`calisma-${personel.personelId}`} />
-                                                    <Label htmlFor={`calisma-${personel.personelId}`}>Çalışma</Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="izinli" id={`izinli-${personel.personelId}`} />
-                                                    <Label htmlFor={`izinli-${personel.personelId}`}>İzinli</Label>
-                                                </div>
-                                            </RadioGroup>
-                                        </TableCell>
-                                        <TableCell>
-                                            {shiftData[personel.personelId]?.tur === 'calisma' && (
-                                                 <div className="flex items-center gap-2">
-                                                    <Input type="time" className="w-24 h-8" value={shiftData[personel.personelId]?.planliGiris} onChange={e => handleShiftDataChange(personel.personelId, 'planliGiris', e.target.value)} />
-                                                    <Input type="number" className="w-20 h-8" value={shiftData[personel.personelId]?.planliSure} onChange={e => handleShiftDataChange(personel.personelId, 'planliSure', e.target.value)} />
-                                                    <span>saat</span>
-                                                 </div>
-                                            )}
-                                        </TableCell>
+        <>
+            <Dialog open={isShareDialogOpen} onOpenChange={setShareDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Paylaşım Metni Oluştur</DialogTitle>
+                        <DialogDescription>
+                            Aşağıdaki metni kopyalayıp grup sohbetinde paylaşabilirsiniz.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        readOnly
+                        value={shareableText}
+                        rows={visibleStaff.length + 4}
+                        className="font-mono bg-muted"
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShareDialogOpen(false)}>İptal</Button>
+                        <Button onClick={handleCopyText}>Metni Kopyala</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Card>
+                <CardHeader className="flex-row items-center justify-between">
+                    <div className='space-y-1.5'>
+                        <CardTitle className="flex items-center gap-2">
+                            <CalendarDays />
+                            Vardiya Planlama
+                        </CardTitle>
+                        <CardDescription>
+                           Personel için günlük vardiyaları planlayın.
+                        </CardDescription>
+                    </div>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={'outline'}
+                                className={cn('w-[280px] justify-start text-left font-normal', !selectedDate && 'text-muted-foreground')}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {selectedDate ? format(selectedDate, 'PPP', { locale: tr }) : <span>Tarih seçin</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={(date) => { if (date) { setSelectedDate(date); setIsEditing(false); } }}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </CardHeader>
+                <CardContent>
+                    {isEditing ? (
+                        <>
+                        <Alert variant="default" className="mb-4">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Düzenleme Modu</AlertTitle>
+                            <AlertDescription>
+                                Personel için çalışma günü/izin günü seçimi yapın ve saatleri ayarlayın. İşiniz bittiğinde "Tümünü Kaydet" butonuna tıklayın.
+                            </AlertDescription>
+                        </Alert>
+                        <div className="rounded-md border">
+                            <Table>
+                                 <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Personel</TableHead>
+                                        <TableHead>Tür</TableHead>
+                                        <TableHead>Planlama</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                     <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="ghost" onClick={() => setIsEditing(false)}>İptال</Button>
-                        <Button onClick={handleSave} disabled={isSaving}>
-                            {isSaving ? <Loader2 className="animate-spin" /> : <Save/>}
-                            Tümünü Kaydet
-                        </Button>
-                     </div>
-                     </>
-                ) : (
-                    <>
-                    <div className="rounded-md border">
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Personel</TableHead>
-                                    <TableHead>Tanımlı Vardiya</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                             <TableBody>
-                                {visibleStaff.map(personel => (
-                                     <TableRow key={personel.personelId}>
-                                         <TableCell>
-                                             <div className="flex items-center gap-3">
-                                                <Avatar>
-                                                    <AvatarImage src={getStaffAvatar(personel)} />
-                                                    <AvatarFallback>{getStaffInitials(personel.adi)}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="font-medium">{personel.adi}</span>
-                                            </div>
-                                         </TableCell>
-                                         <TableCell>{renderShiftInfo(personel.personelId)}</TableCell>
-                                     </TableRow>
-                                ))}
-                            </TableBody>
-                         </Table>
-                    </div>
-                     <div className="flex justify-end mt-4">
-                        <Button onClick={() => setIsEditing(true)}><Pencil/> Düzenle</Button>
-                    </div>
-                    </>
-                )}
-            </CardContent>
-        </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {visibleStaff.map(personel => (
+                                        <TableRow key={personel.personelId}>
+                                            <TableCell className="font-medium">{personel.adi}</TableCell>
+                                            <TableCell>
+                                                <RadioGroup
+                                                    value={shiftData[personel.personelId]?.tur || 'calisma'}
+                                                    onValueChange={(val: 'calisma' | 'izinli') => handleShiftDataChange(personel.personelId, 'tur', val)}
+                                                    className="flex gap-4"
+                                                >
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="calisma" id={`calisma-${personel.personelId}`} />
+                                                        <Label htmlFor={`calisma-${personel.personelId}`}>Çalışma</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="izinli" id={`izinli-${personel.personelId}`} />
+                                                        <Label htmlFor={`izinli-${personel.personelId}`}>İzinli</Label>
+                                                    </div>
+                                                </RadioGroup>
+                                            </TableCell>
+                                            <TableCell>
+                                                {shiftData[personel.personelId]?.tur === 'calisma' && (
+                                                     <div className="flex items-center gap-2">
+                                                        <Input type="time" className="w-24 h-8" value={shiftData[personel.personelId]?.planliGiris} onChange={e => handleShiftDataChange(personel.personelId, 'planliGiris', e.target.value)} />
+                                                        <Input type="number" className="w-20 h-8" value={shiftData[personel.personelId]?.planliSure} onChange={e => handleShiftDataChange(personel.personelId, 'planliSure', e.target.value)} />
+                                                        <span>saat</span>
+                                                     </div>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                         <div className="flex justify-end gap-2 mt-4">
+                            <Button variant="ghost" onClick={() => setIsEditing(false)}>İptal</Button>
+                            <Button onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="animate-spin" /> : <Save/>}
+                                Tümünü Kaydet
+                            </Button>
+                         </div>
+                         </>
+                    ) : (
+                        <>
+                        <div className="rounded-md border">
+                             <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Personel</TableHead>
+                                        <TableHead>Tanımlı Vardiya</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                 <TableBody>
+                                    {visibleStaff.map(personel => (
+                                         <TableRow key={personel.personelId}>
+                                             <TableCell>
+                                                 <div className="flex items-center gap-3">
+                                                    <Avatar>
+                                                        <AvatarImage src={getStaffAvatar(personel)} />
+                                                        <AvatarFallback>{getStaffInitials(personel.adi)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="font-medium">{personel.adi}</span>
+                                                </div>
+                                             </TableCell>
+                                             <TableCell>{renderShiftInfo(personel.personelId)}</TableCell>
+                                         </TableRow>
+                                    ))}
+                                </TableBody>
+                             </Table>
+                        </div>
+                         <div className="flex justify-end gap-2 mt-4">
+                             <Button variant="outline" onClick={generateShareableText} disabled={dailyShifts.size === 0}>
+                                <Share2 /> Paylaşım Metni Oluştur
+                            </Button>
+                            <Button onClick={() => setIsEditing(true)}><Pencil/> Düzenle</Button>
+                        </div>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
+        </>
     );
 }
 
