@@ -412,13 +412,15 @@ const ShiftPlanningTab = () => {
     const generateShareableText = () => {
         let text = `**Vardiya Planı - ${format(selectedDate, 'd MMMM yyyy, EEEE', { locale: tr })}**\n\n`;
         
-        visibleStaff.forEach(personel => {
+        const staffOnly = visibleStaff.filter(p => p.rol === 'calisan');
+
+        staffOnly.forEach(personel => {
             const shift = dailyShifts.get(personel.personelId);
             text += `- ${personel.adi}: `;
             
             if (shift?.tur === 'izinli') {
                 text += `izinli\n`;
-            } else if (shift?.planliGiris && shift?.planliSureDakika) {
+            } else if (shift?.planliGiris) {
                 const startTime = format(new Date(shift.planliGiris), 'HH:mm');
                 text += `${startTime}\n`;
             } else {
@@ -463,7 +465,7 @@ const ShiftPlanningTab = () => {
                     <Textarea
                         readOnly
                         value={shareableText}
-                        rows={visibleStaff.length + 4}
+                        rows={visibleStaff.filter(p => p.rol === 'calisan').length + 4}
                         className="font-mono bg-muted"
                     />
                     <DialogFooter>
