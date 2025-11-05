@@ -420,8 +420,7 @@ const ShiftPlanningTab = () => {
                 text += `izinli\n`;
             } else if (shift?.planliGiris && shift?.planliSureDakika) {
                 const startTime = format(new Date(shift.planliGiris), 'HH:mm');
-                const endTime = format(addMinutes(new Date(shift.planliGiris), shift.planliSureDakika), 'HH:mm');
-                text += `${startTime} - ${endTime} (${shift.planliSureDakika / 60} saat)\n`;
+                text += `${startTime}\n`;
             } else {
                 text += `Tanımsız\n`;
             }
