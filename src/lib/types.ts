@@ -18,6 +18,7 @@ export interface Personel {
   password?: string;
   canManageInventory?: boolean; // Izin kontrolü için yeni alan
   aktif?: boolean; // Personelin aktif olup olmadığını belirtir
+  notificationTokens?: string[]; // For push notifications
 }
 
 export interface Vardiya {
