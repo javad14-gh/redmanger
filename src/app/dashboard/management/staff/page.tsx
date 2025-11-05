@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 // NOTE: We don't have a way to CREATE users with email/password from the client SDK directly for security reasons.
 // This form would typically call a serverless function. For this prototype, we'll just add user data to Firestore.
 
@@ -143,6 +144,7 @@ export default function StaffManagementPage() {
     const { toast } = useToast();
     const [isFormOpen, setFormOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Personel | undefined>(undefined);
+    const [showInactive, setShowInactive] = useState(false);
 
     const handleFormSubmit = async (data: any, isNew: boolean) => {
         if (!user) return;
@@ -207,10 +209,22 @@ export default function StaffManagementPage() {
 
     const visibleStaff = useMemo(() => {
         if (!user) return [];
-        if (user.role === 'genel-mudur') return staff.filter(s => s.rol !== 'genel-mudur');
-        if (user.role === 'sube-muduru') return staff.filter(s => s.subeId === user.branchId);
-        return [];
-    }, [user, staff]);
+        let filteredStaff = staff;
+
+        if (user.role === 'genel-mudur') {
+            filteredStaff = staff.filter(s => s.rol !== 'genel-mudur');
+        } else if (user.role === 'sube-muduru') {
+            filteredStaff = staff.filter(s => s.subeId === user.branchId);
+        } else {
+            return []; // No staff visible for other roles
+        }
+        
+        if (!showInactive) {
+            filteredStaff = filteredStaff.filter(s => s.aktif !== false);
+        }
+
+        return filteredStaff;
+    }, [user, staff, showInactive]);
 
 
     if (!user || (user.role !== 'genel-mudur' && user.role !== 'sube-muduru')) {
@@ -228,6 +242,13 @@ export default function StaffManagementPage() {
                 <div className="space-y-1">
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">Personel Yönetimi</h1>
                     <p className="text-muted-foreground">Personel bilgilerini düzenleyin ve izinlerini yönetin.</p>
+                </div>
+                 <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-2">
+                        <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
+                        <Label htmlFor="show-inactive">Ayrılanları Göster</Label>
+                    </div>
+                    <Button onClick={openNewForm}><PlusCircle/> Yeni Personel Ekle</Button>
                 </div>
             </div>
 
@@ -266,8 +287,9 @@ export default function StaffManagementPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {visibleStaff.map(p => (
-                                    <TableRow key={p.personelId} className={p.aktif === false ? 'bg-muted/50' : ''}>
+                                {visibleStaff.length > 0 ? (
+                                    visibleStaff.map(p => (
+                                    <TableRow key={p.personelId} className={cn(p.aktif === false && 'bg-muted/50')}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Avatar>
@@ -282,7 +304,7 @@ export default function StaffManagementPage() {
                                         </TableCell>
                                         <TableCell><Badge variant="secondary">{p.rol}</Badge></TableCell>
                                         <TableCell>
-                                             <Badge variant={p.aktif === false ? 'destructive' : 'default'} className={cn(p.aktif !== false && 'bg-green-600 hover:bg-green-700')}>
+                                             <Badge variant={p.aktif === false ? 'destructive' : 'default'} className={cn(p.aktif !== false && 'bg-green-600 hover:bg-green-700 text-white')}>
                                                 {p.aktif === false ? 'Ayrıldı' : 'Aktif'}
                                             </Badge>
                                         </TableCell>
@@ -296,7 +318,13 @@ export default function StaffManagementPage() {
                                             </Button>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                ))) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-24 text-center">
+                                            Gösterilecek personel bulunamadı.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </div>
