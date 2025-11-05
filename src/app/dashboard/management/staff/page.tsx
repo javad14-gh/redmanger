@@ -61,6 +61,8 @@ const StaffForm = ({ staffMember, onFormSubmit, closeDialog, currentUser }: { st
             subeId: staffMember.subeId,
             canManageInventory: staffMember.canManageInventory || false,
             aktif: staffMember.aktif !== false, // default to true if undefined
+            // Explicitly define password for the controlled component even in edit mode
+            ...(isNewUser ? {} : { password: '' }),
         } : {
             adi: '',
             email: '',
@@ -238,16 +240,12 @@ export default function StaffManagementPage() {
     
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-start">
+             <div className="flex justify-between items-center">
                 <div className="space-y-1">
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">Personel Yönetimi</h1>
                     <p className="text-muted-foreground">Personel bilgilerini düzenleyin ve izinlerini yönetin.</p>
                 </div>
                  <div className="flex items-center gap-4">
-                    <div className="flex items-center space-x-2">
-                        <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
-                        <Label htmlFor="show-inactive">Ayrılanları Göster</Label>
-                    </div>
                     <Button onClick={openNewForm}><PlusCircle/> Yeni Personel Ekle</Button>
                 </div>
             </div>
@@ -271,7 +269,13 @@ export default function StaffManagementPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Users/> Personel Listesi</CardTitle>
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="flex items-center gap-2"><Users/> Personel Listesi</CardTitle>
+                        <div className="flex items-center space-x-2">
+                            <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
+                            <Label htmlFor="show-inactive">Ayrılanları Göster</Label>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-md border">
