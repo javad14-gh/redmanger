@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 // NOTE: We don't have a way to CREATE users with email/password from the client SDK directly for security reasons.
 // This form would typically call a serverless function. For this prototype, we'll just add user data to Firestore.
 
@@ -281,7 +282,7 @@ export default function StaffManagementPage() {
                                         </TableCell>
                                         <TableCell><Badge variant="secondary">{p.rol}</Badge></TableCell>
                                         <TableCell>
-                                             <Badge variant={p.aktif === false ? 'destructive' : 'default'}>
+                                             <Badge variant={p.aktif === false ? 'destructive' : 'default'} className={cn(p.aktif !== false && 'bg-green-600 hover:bg-green-700')}>
                                                 {p.aktif === false ? 'Ayrıldı' : 'Aktif'}
                                             </Badge>
                                         </TableCell>
