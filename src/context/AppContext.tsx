@@ -18,6 +18,7 @@ import {
   updatePassword
 } from 'firebase/auth';
 import { doc, getDoc, collection, onSnapshot, query, Timestamp, enableNetwork } from 'firebase/firestore';
+import { getOrRegisterMessagingToken } from '@/lib/firebase-messaging-client';
 
 
 interface AppContextType {
@@ -77,6 +78,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               canManageInventory: userProfile.canManageInventory || false
             };
             setUser(appUser);
+            
+            // Kullanıcı giriş yaptıktan sonra bildirim token'ını kaydetmeye çalış
+            getOrRegisterMessagingToken(currentFirebaseUser.uid);
+            
           } else {
             console.warn(`User with UID ${currentFirebaseUser.uid} not found in Firestore. Logging out.`);
             await signOut(auth);
@@ -86,7 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error("Error fetching user document from Firestore:", error);
           await signOut(auth);
-setUser(null);
+          setUser(null);
           setFirebaseUser(null);
         }
       } else {
