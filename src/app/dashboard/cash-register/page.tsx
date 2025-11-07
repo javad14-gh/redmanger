@@ -525,12 +525,18 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
     }, [combinedEntries, dateRange, statusFilter, branchFilter, showBranchFilter, typeFilter]);
 
     const totalAmount = useMemo(() => {
+        if (typeFilter === 'expense') {
+            return filteredEntries.reduce((sum, entry) => {
+                if(entry.type === 'expense') return sum + entry.tutar;
+                return sum;
+            }, 0);
+        }
         return filteredEntries.reduce((sum, entry) => {
             if(entry.type === 'cash') return sum + entry.nakitMiktari;
             if(entry.type === 'expense' && entry.hesaplandi) return sum - entry.tutar;
             return sum;
         }, 0);
-    }, [filteredEntries]);
+    }, [filteredEntries, typeFilter]);
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
@@ -551,7 +557,6 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
             tableRows.push(rowData);
         });
 
-        doc.setFont('Helvetica');
 
         let title = "Kasa Raporu";
         if (dateRange?.from) {
