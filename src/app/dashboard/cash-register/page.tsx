@@ -17,7 +17,7 @@ import { CashEntry, Personel, Sube, Expense, AppUser } from '@/lib/types';
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn, getBusinessDate } from '@/lib/utils';
-import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft } from 'lucide-react';
+import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft, FileDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -26,6 +26,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 
 const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unsettledExpenses, personelName, selectedDate, onDateChange }: { branchId: string, personelId: string, todaysEntry?: CashEntry, pendingAmount: number, unsettledExpenses: number, personelName: string, selectedDate: Date, onDateChange: (date: Date) => void }) => {
     const { toast } = useToast();
@@ -476,6 +479,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
     const [statusFilter, setStatusFilter] = useState<'all' | 'beklemede' | 'teslim edildi'>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | 'cash' | 'expense'>('all');
     const [branchFilter, setBranchFilter] = useState<'all' | string>('all');
+    const { toast } = useToast();
     
     const branchMap = useMemo(() => {
         return branches.reduce((acc, branch) => {
@@ -527,6 +531,51 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
             return sum;
         }, 0);
     }, [filteredEntries]);
+
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        
+        const tableColumns = ["Tarih", "Açıklama", "Şube", "Durum", "Tutar"];
+        const tableRows: (string | number)[][] = [];
+
+        filteredEntries.forEach(entry => {
+            const rowData = [
+                format(entry.islemTarihi, 'dd.MM.yyyy', { locale: tr }),
+                entry.type === 'cash' ? 'Kasa Girişi' : entry.aciklama,
+                branchMap[entry.subeId] || 'Bilinmiyor',
+                entry.type === 'cash' 
+                    ? (entry.teslimDurumu === 'teslim edildi' ? 'Teslim Edildi' : 'Beklemede')
+                    : (entry.hesaplandi ? 'Hesaplandı' : 'Beklemede'),
+                entry.type === 'cash' ? `+${entry.nakitMiktari.toFixed(2)}` : `-${entry.tutar.toFixed(2)}`
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.setFont('Helvetica');
+
+        let title = "Kasa Raporu";
+        if (dateRange?.from) {
+            title += ` (${format(dateRange.from, 'd MMM', { locale: tr })}`;
+            if (dateRange.to) {
+                title += ` - ${format(dateRange.to, 'd MMM', { locale: tr })}`;
+            }
+            title += ")";
+        }
+        doc.text(title, 14, 15);
+        
+        (doc as any).autoTable({
+            head: [tableColumns],
+            body: tableRows,
+            startY: 20,
+            theme: 'striped',
+            headStyles: { fillColor: [22, 163, 74] },
+             foot: [['', '', '', 'Genel Toplam', `₺${totalAmount.toFixed(2)}`]],
+            footStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontStyle: 'bold' }
+        });
+
+        doc.save('Kasa-Raporu.pdf');
+         toast({ title: 'Başarılı', description: 'Rapor PDF olarak indirildi.' });
+    };
 
     return (
         <div>
@@ -605,6 +654,10 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                         </SelectContent>
                     </Select>
                  )}
+                 <Button onClick={handleExportPDF} variant="outline">
+                    <FileDown className="mr-2 h-4 w-4" />
+                    PDF Olarak Aktar
+                </Button>
             </div>
 
              <div className="rounded-md border">
