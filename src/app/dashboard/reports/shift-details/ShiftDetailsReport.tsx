@@ -21,6 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 
@@ -29,6 +31,7 @@ export function ShiftDetailsReport() {
   const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [selectedStaff, setSelectedStaff] = useState<string>('all');
+  const [showInactive, setShowInactive] = useState(false);
 
   const isEmployee = user?.role === 'calisan';
 
@@ -49,7 +52,10 @@ export function ShiftDetailsReport() {
     const monthEnd = endOfMonth(selectedMonthDate);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    let staffForView = staff.filter(s => s.aktif !== false && s.rol !== 'genel-mudur');
+    let staffForView = staff.filter(s => s.rol !== 'genel-mudur');
+    if (!showInactive) {
+        staffForView = staffForView.filter(s => s.aktif !== false);
+    }
 
     if (user?.role === 'sube-muduru' && user.branchId) {
       staffForView = staffForView.filter(s => s.subeId === user.branchId);
@@ -72,7 +78,7 @@ export function ShiftDetailsReport() {
     });
 
     return { daysInMonth: days, filteredStaff: staffForView, shiftMap: newShiftMap };
-  }, [isLoading, staff, shifts, selectedMonthDate, selectedBranch, selectedStaff, user]);
+  }, [isLoading, staff, shifts, selectedMonthDate, selectedBranch, selectedStaff, user, showInactive]);
 
   const getShiftForCell = (personelId: string, day: Date): Vardiya | undefined => {
     const dateOnlyKey = `${personelId}-${format(day, 'yyyy-MM-dd')}`;
@@ -80,7 +86,10 @@ export function ShiftDetailsReport() {
   };
   
   const staffOptionsForFilter = useMemo(() => {
-    let staffList = staff.filter(s => s.aktif !== false && s.rol !== 'genel-mudur');
+    let staffList = staff.filter(s => s.rol !== 'genel-mudur');
+    if (!showInactive) {
+        staffList = staffList.filter(s => s.aktif !== false);
+    }
      if (user?.role === 'sube-muduru' && user.branchId) {
       return staffList.filter(s => s.subeId === user.branchId);
     }
@@ -88,7 +97,7 @@ export function ShiftDetailsReport() {
         return staffList.filter(s => s.subeId === selectedBranch);
     }
     return staffList;
-  }, [staff, user, selectedBranch]);
+  }, [staff, user, selectedBranch, showInactive]);
   
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const months = Array.from({ length: 12 }, (_, i) => ({
@@ -119,7 +128,7 @@ export function ShiftDetailsReport() {
 
   return (
     <div className="space-y-4">
-       <div className='flex flex-wrap gap-4'>
+       <div className='flex flex-wrap gap-4 items-center'>
             <Select
                 value={String(selectedMonthDate.getFullYear())}
                 onValueChange={handleYearChange}
@@ -170,6 +179,12 @@ export function ShiftDetailsReport() {
                      {staffOptionsForFilter.map(s => <SelectItem key={s.personelId} value={s.personelId}>{s.adi}</SelectItem>)}
                 </SelectContent>
             </Select>
+            {!isEmployee && (
+                <div className="flex items-center space-x-2">
+                    <Switch id="show-inactive-details" checked={showInactive} onCheckedChange={setShowInactive} />
+                    <Label htmlFor="show-inactive-details">Ayrılanları Göster</Label>
+                </div>
+            )}
        </div>
 
       <div className="rounded-md border overflow-x-auto">

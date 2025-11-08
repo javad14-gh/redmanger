@@ -22,6 +22,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Building } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const formatMinutesToHours = (mins: number) => {
   if (isNaN(mins) || !isFinite(mins)) return '0 saat';
@@ -85,6 +87,8 @@ const ReportTable = ({ reportData }: { reportData: any[] }) => {
 export function MonthlyReport() {
   const { user, staff, shifts, branches, isLoading, firebaseUser } = useApp();
   const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
+  const [showInactive, setShowInactive] = useState(false);
+
 
   const { reportData, groupedReportData } = useMemo(() => {
     if (!user || staff.length === 0 || !firebaseUser) return { reportData: [], groupedReportData: {} };
@@ -136,17 +140,20 @@ export function MonthlyReport() {
         };
     }
     
+    let staffToProcess = staff;
+    if (!showInactive) {
+        staffToProcess = staff.filter(s => s.aktif !== false);
+    }
+    
     // Handle employee role first
     if (user.role === 'calisan') {
-        const self = staff.find(s => s.personelId === firebaseUser.uid);
+        const self = staffToProcess.find(s => s.personelId === firebaseUser.uid);
         const selfReport = self ? [processPersonel(self)] : [];
         return { reportData: selfReport, groupedReportData: {} };
     }
 
-    const activeStaff = staff.filter(s => s.aktif !== false);
-
     if (user.role === 'genel-mudur') {
-        const groupedData = activeStaff
+        const groupedData = staffToProcess
             .filter(s => s.rol !== 'genel-mudur')
             .reduce((acc, personel) => {
                 if (!personel.subeId) return acc;
@@ -159,14 +166,14 @@ export function MonthlyReport() {
             }, {} as Record<string, any[]>);
         return { reportData: [], groupedReportData: groupedData };
     } else if (user.role === 'sube-muduru') {
-        const branchStaff = user.branchId ? activeStaff.filter(s => s.subeId === user.branchId) : [];
+        const branchStaff = user.branchId ? staffToProcess.filter(s => s.subeId === user.branchId) : [];
         const flatData = branchStaff.map(processPersonel);
         return { reportData: flatData, groupedReportData: {} };
     }
     
     return { reportData: [], groupedReportData: {} };
 
-  }, [user, staff, shifts, selectedMonthDate, firebaseUser]);
+  }, [user, staff, shifts, selectedMonthDate, firebaseUser, showInactive]);
   
   const getBranchName = (branchId: string) => branches.find(b => b.subeId === branchId)?.adi || 'Bilinmeyen Şube';
   
@@ -230,6 +237,14 @@ export function MonthlyReport() {
             ))}
           </SelectContent>
         </Select>
+
+        {!isEmployee && (
+            <div className="flex items-center space-x-2">
+                <Switch id="show-inactive-monthly" checked={showInactive} onCheckedChange={setShowInactive} />
+                <Label htmlFor="show-inactive-monthly">Ayrılanları Göster</Label>
+            </div>
+        )}
+
       </div>
 
 
