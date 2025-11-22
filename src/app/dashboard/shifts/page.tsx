@@ -28,13 +28,26 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 
 
-// Helper to combine a date and a time string (HH:mm) into a Date object
+// Helper to combine a date and a time string (HH:mm) into a Date object, respecting the target timezone (Turkey UTC+3)
 const combineDateAndTime = (date: Date, timeString: string): Date | undefined => {
     if (!timeString) return undefined;
     const [hours, minutes] = timeString.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes)) return undefined;
-    return set(date, { hours, minutes, seconds: 0, milliseconds: 0 });
+
+    // Create a date object with the local date parts, but set the time in UTC.
+    // This correctly anchors the date part without timezone interference.
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    
+    // Create a UTC date. This represents the absolute moment in time we want.
+    // We assume the input time 'hours' and 'minutes' are for the Turkey timezone (UTC+3).
+    // So, to get the correct UTC time, we subtract 3 hours.
+    const utcDate = new Date(Date.UTC(year, month, day, hours - 3, minutes, 0, 0));
+
+    return utcDate;
 };
+
 
 const getStaffAvatar = (personel: Personel) => personel.avatarUrl || `https://picsum.photos/seed/${personel.personelId}/100/100`;
 const getStaffInitials = (name: string) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('') : 'P';
