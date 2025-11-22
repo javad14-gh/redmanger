@@ -34,18 +34,28 @@ const combineDateAndTime = (date: Date, timeString: string): Date | undefined =>
     const [hours, minutes] = timeString.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes)) return undefined;
 
-    // Create a date object with the local date parts, but set the time in UTC.
-    // This correctly anchors the date part without timezone interference.
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
-    
-    // Create a UTC date. This represents the absolute moment in time we want.
-    // We assume the input time 'hours' and 'minutes' are for the Turkey timezone (UTC+3).
-    // So, to get the correct UTC time, we subtract 3 hours.
-    const utcDate = new Date(Date.UTC(year, month, day, hours - 3, minutes, 0, 0));
+    // 1. Create a local date object with the desired time.
+    // This will be in the browser's current timezone (e.g., Dubai time).
+    const localDate = new Date(date);
+    localDate.setHours(hours, minutes, 0, 0);
 
-    return utcDate;
+    // 2. Get the timezone offset for that specific local date.
+    // The offset is the difference in minutes between UTC and the local time.
+    // A positive offset means the local time is behind UTC (e.g., Americas).
+    // A negative offset means the local time is ahead of UTC (e.g., Asia).
+    const localOffsetInMinutes = localDate.getTimezoneOffset();
+
+    // 3. The offset for Turkey (UTC+3) is -180 minutes.
+    const turkeyOffsetInMinutes = -180;
+
+    // 4. Calculate the difference between the local offset and Turkey's offset.
+    const offsetDifference = localOffsetInMinutes - turkeyOffsetInMinutes;
+
+    // 5. Add this difference back to the local date to get the correct UTC time
+    // that will represent the intended Turkey time.
+    const turkeyDate = new Date(localDate.getTime() + offsetDifference * 60 * 1000);
+
+    return turkeyDate;
 };
 
 
@@ -143,8 +153,10 @@ const DailyTrackingTab = () => {
         try {
             const shiftRef = doc(db, 'shifts', existingShift.vardiyaId);
             const updateData: any = {};
-            if(girisDate) updateData.girisSaati = Timestamp.fromDate(girisDate); else updateData.girisSaati = deleteField();
-            if(cikisDate) updateData.cikisSaati = Timestamp.fromDate(cikisDate); else updateData.cikisSaati = deleteField();
+            
+            // Always re-calculate and save the times to fix timezone issues on old data
+            updateData.girisSaati = girisDate ? Timestamp.fromDate(girisDate) : deleteField();
+            updateData.cikisSaati = cikisDate ? Timestamp.fromDate(cikisDate) : deleteField();
 
             await updateDoc(shiftRef, updateData);
             toast({ title: 'Başarılı', description: `${existingShift.personelAdi} için değişiklikler kaydedildi.`});
