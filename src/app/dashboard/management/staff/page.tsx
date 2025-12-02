@@ -31,6 +31,7 @@ const staffSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi girin.'),
   rol: z.enum(['sube-muduru', 'calisan'], { required_error: 'Rol seçimi zorunludur.'}),
   subeId: z.string().min(1, 'Şube seçimi zorunludur.'),
+  tanimlananSaat: z.coerce.number().min(1, 'Tanımlanan saat en az 1 olmalıdır.').max(16, 'Tanımlanan saat en fazla 16 olabilir.'),
   canManageInventory: z.boolean().default(false),
   aktif: z.boolean().default(true),
 });
@@ -59,6 +60,7 @@ const StaffForm = ({ staffMember, onFormSubmit, closeDialog, currentUser }: { st
             email: staffMember.email,
             rol: staffMember.rol as 'sube-muduru' | 'calisan',
             subeId: staffMember.subeId,
+            tanimlananSaat: staffMember.tanimlananSaat || 8,
             canManageInventory: staffMember.canManageInventory || false,
             aktif: staffMember.aktif !== false, // default to true if undefined
             // Explicitly define password for the controlled component even in edit mode
@@ -69,6 +71,7 @@ const StaffForm = ({ staffMember, onFormSubmit, closeDialog, currentUser }: { st
             password: '',
             rol: 'calisan',
             subeId: currentUser.role === 'sube-muduru' ? currentUser.branchId : '',
+            tanimlananSaat: 8,
             canManageInventory: false,
             aktif: true,
         },
@@ -97,14 +100,19 @@ const StaffForm = ({ staffMember, onFormSubmit, closeDialog, currentUser }: { st
                         <FormItem><FormLabel>Şifre</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                 )}
-                <FormField control={form.control} name="rol" render={({ field }) => (
-                    <FormItem><FormLabel>Rol</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger></FormControl>
-                            <SelectContent>{availableRoles.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                        </Select><FormMessage />
-                    </FormItem>
-                )}/>
+                 <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="rol" render={({ field }) => (
+                        <FormItem><FormLabel>Rol</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger></FormControl>
+                                <SelectContent>{availableRoles.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+                            </Select><FormMessage />
+                        </FormItem>
+                    )}/>
+                     <FormField control={form.control} name="tanimlananSaat" render={({ field }) => (
+                        <FormItem><FormLabel>Tanımlanan Saat</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                </div>
                 <FormField control={form.control} name="subeId" render={({ field }) => (
                     <FormItem><FormLabel>Şube</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value} disabled={currentUser.role === 'sube-muduru'}>
@@ -165,9 +173,9 @@ export default function StaffManagementPage() {
                     email: data.email,
                     rol: data.rol,
                     subeId: data.subeId,
+                    tanimlananSaat: data.tanimlananSaat,
                     canManageInventory: data.canManageInventory,
                     avatarUrl: `https://picsum.photos/seed/${newStaffRef.id}/100/100`,
-                    tanimlananSaat: 160, // default
                     aktif: data.aktif,
                 };
                 await setDoc(newStaffRef, newUser);
@@ -186,6 +194,7 @@ export default function StaffManagementPage() {
                     email: data.email,
                     rol: data.rol,
                     subeId: data.subeId,
+                    tanimlananSaat: data.tanimlananSaat,
                     canManageInventory: data.canManageInventory,
                     aktif: data.aktif,
                 });
@@ -284,6 +293,7 @@ export default function StaffManagementPage() {
                                 <TableRow>
                                     <TableHead>Personel</TableHead>
                                     <TableHead>Rol</TableHead>
+                                    <TableHead>Tanımlı Saat</TableHead>
                                     <TableHead>Durum</TableHead>
                                     <TableHead>Şube</TableHead>
                                     <TableHead>Yetkiler</TableHead>
@@ -307,6 +317,7 @@ export default function StaffManagementPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell><Badge variant="secondary">{p.rol}</Badge></TableCell>
+                                        <TableCell className="text-center">{p.tanimlananSaat} saat</TableCell>
                                         <TableCell>
                                              <Badge variant={p.aktif === false ? 'destructive' : 'default'} className={cn(p.aktif !== false && 'bg-green-600 hover:bg-green-700 text-white')}>
                                                 {p.aktif === false ? 'Ayrıldı' : 'Aktif'}
@@ -324,7 +335,7 @@ export default function StaffManagementPage() {
                                     </TableRow>
                                 ))) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
+                                        <TableCell colSpan={7} className="h-24 text-center">
                                             Gösterilecek personel bulunamadı.
                                         </TableCell>
                                     </TableRow>

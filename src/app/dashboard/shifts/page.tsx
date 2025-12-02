@@ -340,7 +340,7 @@ const ShiftPlanningTab = () => {
     const [isShareDialogOpen, setShareDialogOpen] = useState(false);
     const [shareableText, setShareableText] = useState('');
 
-    const [shiftData, setShiftData] = useState<Record<string, { tur: 'calisma' | 'izinli', planliGiris: string, planliSure: string }>>({});
+    const [shiftData, setShiftData] = useState<Record<string, { tur: 'calisma' | 'izinli', planliGiris: string }>>({});
 
     const visibleStaff = useMemo(() => {
         if (!user || user.role !== 'sube-muduru' || !user.branchId) return [];
@@ -362,7 +362,6 @@ const ShiftPlanningTab = () => {
             newShiftData[personel.personelId] = {
                 tur: shift?.tur || 'calisma',
                 planliGiris: shift?.planliGiris ? format(new Date(shift.planliGiris), 'HH:mm') : '09:00',
-                planliSure: shift?.planliSureDakika ? (shift.planliSureDakika / 60).toString() : '8'
             }
         });
         setShiftData(newShiftData);
@@ -403,8 +402,8 @@ const ShiftPlanningTab = () => {
                     return;
                 }
                 shiftPayload.planliGiris = Timestamp.fromDate(combinedDate);
-                shiftPayload.planliSureDakika = Number(data.planliSure) * 60;
-                // Don't wipe actual hours when just planning
+                // Use the defined hours from the staff's profile
+                shiftPayload.planliSureDakika = (personel.tanimlananSaat || 8) * 60;
             } else {
                 shiftPayload.planliGiris = deleteField();
                 shiftPayload.planliSureDakika = deleteField();
@@ -468,13 +467,16 @@ const ShiftPlanningTab = () => {
     };
 
 
-    const renderShiftInfo = (personelId: string) => {
-        const shift = dailyShifts.get(personelId);
+    const renderShiftInfo = (personel: Personel) => {
+        const shift = dailyShifts.get(personel.personelId);
         if (shift?.tur === 'izinli') return <Badge variant="secondary">İzinli</Badge>;
-        if (!shift?.planliGiris || !shift?.planliSureDakika) return <Badge variant="outline">Tanımsız</Badge>;
+        
+        const sureDakika = shift?.planliSureDakika || (personel.tanimlananSaat || 8) * 60;
+        
+        if (!shift?.planliGiris) return <Badge variant="outline">Tanımsız</Badge>;
 
-        const plannedEndTime = addMinutes(new Date(shift.planliGiris), shift.planliSureDakika);
-        return `${format(new Date(shift.planliGiris), 'HH:mm')} - ${format(plannedEndTime, 'HH:mm')} (${shift.planliSureDakika/60} sa)`;
+        const plannedEndTime = addMinutes(new Date(shift.planliGiris), sureDakika);
+        return `${format(new Date(shift.planliGiris), 'HH:mm')} - ${format(plannedEndTime, 'HH:mm')} (${sureDakika/60} sa)`;
     }
 
     return (
@@ -538,7 +540,7 @@ const ShiftPlanningTab = () => {
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Düzenleme Modu</AlertTitle>
                             <AlertDescription>
-                                Personel için çalışma günü/izin günü seçimi yapın ve saatleri ayarlayın. İşiniz bittiğinde "Tümünü Kaydet" butonuna tıklayın.
+                                Personel için çalışma günü/izin günü seçimi yapın ve başlangıç saatini ayarlayın. Süre, personelin profilinden otomatik alınacaktır.
                             </AlertDescription>
                         </Alert>
                         <div className="rounded-md border">
@@ -574,8 +576,7 @@ const ShiftPlanningTab = () => {
                                                 {shiftData[personel.personelId]?.tur === 'calisma' && (
                                                      <div className="flex items-center gap-2">
                                                         <Input type="time" className="w-24 h-8" value={shiftData[personel.personelId]?.planliGiris} onChange={e => handleShiftDataChange(personel.personelId, 'planliGiris', e.target.value)} />
-                                                        <Input type="number" className="w-20 h-8" value={shiftData[personel.personelId]?.planliSure} onChange={e => handleShiftDataChange(personel.personelId, 'planliSure', e.target.value)} />
-                                                        <span>saat</span>
+                                                        <Badge variant="outline">({personel.tanimlananSaat || 8} saat)</Badge>
                                                      </div>
                                                 )}
                                             </TableCell>
@@ -614,7 +615,7 @@ const ShiftPlanningTab = () => {
                                                     <span className="font-medium">{personel.adi}</span>
                                                 </div>
                                              </TableCell>
-                                             <TableCell>{renderShiftInfo(personel.personelId)}</TableCell>
+                                             <TableCell>{renderShiftInfo(personel)}</TableCell>
                                          </TableRow>
                                     ))}
                                 </TableBody>
