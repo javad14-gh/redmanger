@@ -49,6 +49,7 @@ const ReportTable = ({ reportData }: { reportData: any[] }) => {
                     <TableRow>
                     <TableHead>Personel</TableHead>
                     <TableHead>Çalışılan Gün Sayısı</TableHead>
+                    <TableHead>İzin Günü Sayısı</TableHead>
                     <TableHead>Toplam Fazla Mesai</TableHead>
                     <TableHead>Toplam Gecikme Sayısı</TableHead>
                     </TableRow>
@@ -67,13 +68,14 @@ const ReportTable = ({ reportData }: { reportData: any[] }) => {
                             </div>
                         </TableCell>
                         <TableCell className="font-medium">{report.workedDays} gün</TableCell>
+                        <TableCell className="font-medium">{report.leaveDays} gün</TableCell>
                         <TableCell className="font-medium">{report.totalOvertime}</TableCell>
                         <TableCell className="font-medium">{report.totalLatenessCount} kez</TableCell>
                         </TableRow>
                     ))
                     ) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                         Bu grup için gösterilecek veri bulunmuyor.
                         </TableCell>
                     </TableRow>
@@ -105,27 +107,29 @@ export function MonthlyReport() {
         
         let totalOvertimeMinutes = 0;
         let totalLatenessCount = 0;
-        const workedOrOnLeaveDays = personShifts.length;
+        
+        const leaveDays = personShifts.filter(s => s.tur === 'izinli').length;
+        const workShifts = personShifts.filter(s => s.tur === 'calisma');
+        const workedDays = workShifts.length;
 
-        personShifts.forEach(shift => {
-            if (shift.tur === 'calisma') {
-                if (shift.girisSaati && shift.cikisSaati && shift.planliSureDakika) {
-                    let giris = new Date(shift.girisSaati);
-                    let cikis = new Date(shift.cikisSaati);
 
-                    if (cikis < giris) {
-                        cikis = addDays(cikis, 1);
-                    }
-                    
-                    const durationMinutes = differenceInMinutes(cikis, giris);
-                    const overtime = durationMinutes - shift.planliSureDakika;
-                    totalOvertimeMinutes += overtime;
+        workShifts.forEach(shift => {
+            if (shift.girisSaati && shift.cikisSaati && shift.planliSureDakika) {
+                let giris = new Date(shift.girisSaati);
+                let cikis = new Date(shift.cikisSaati);
+
+                if (cikis < giris) {
+                    cikis = addDays(cikis, 1);
                 }
+                
+                const durationMinutes = differenceInMinutes(cikis, giris);
+                const overtime = durationMinutes - shift.planliSureDakika;
+                totalOvertimeMinutes += overtime;
+            }
 
-                if (shift.planliGiris && shift.girisSaati) {
-                    if (new Date(shift.girisSaati) > new Date(shift.planliGiris)) {
-                        totalLatenessCount += 1;
-                    }
+            if (shift.planliGiris && shift.girisSaati) {
+                if (new Date(shift.girisSaati) > new Date(shift.planliGiris)) {
+                    totalLatenessCount += 1;
                 }
             }
         });
@@ -134,7 +138,8 @@ export function MonthlyReport() {
             personelId: personel.personelId,
             adi: personel.adi,
             avatarUrl: personel.avatarUrl,
-            workedDays: workedOrOnLeaveDays,
+            workedDays: workedDays,
+            leaveDays: leaveDays,
             totalOvertime: formatMinutesToHours(totalOvertimeMinutes),
             totalLatenessCount: totalLatenessCount,
         };
