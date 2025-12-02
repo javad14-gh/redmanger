@@ -17,7 +17,7 @@ import { CashEntry, Personel, Sube, Expense, AppUser, NakitDagilimDetayi } from 
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn, getBusinessDate } from '@/lib/utils';
-import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft, FileDown, Users } from 'lucide-react';
+import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft, FileDown, Users, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -495,11 +495,12 @@ const AddExpenseTab = ({ user, branchId, personelId, branchExpenses, onToggleExp
 type ReportItem = (CashEntry & { type: 'cash'; totalAmount: number; }) | (Expense & { type: 'expense'; islemTarihi: Date });
 
 
-const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { cashEntries: CashEntry[], expenses: Expense[], branches: Sube[], showBranchFilter: boolean }) => {
+const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter }: { cashEntries: CashEntry[], expenses: Expense[], branches: Sube[], staff: Personel[], showBranchFilter: boolean }) => {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [statusFilter, setStatusFilter] = useState<'all' | 'beklemede' | 'teslim edildi'>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | 'cash' | 'expense'>('all');
     const [branchFilter, setBranchFilter] = useState<'all' | string>('all');
+    const [personelFilter, setPersonelFilter] = useState<'all' | string>('all');
     const { toast } = useToast();
     
     const branchMap = useMemo(() => {
@@ -508,6 +509,9 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
             return acc;
         }, {} as Record<string, string>);
     }, [branches]);
+    
+    const personelOptions = useMemo(() => staff.filter(s => s.rol === 'sube-muduru' || s.rol === 'genel-mudur'), [staff]);
+
 
     const combinedEntries = useMemo((): ReportItem[] => {
         const cash: ReportItem[] = cashEntries.map(e => ({ 
@@ -545,23 +549,40 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
         if (showBranchFilter && branchFilter !== 'all') {
             result = result.filter(e => e.subeId === branchFilter);
         }
+        if (personelFilter !== 'all') {
+            result = result.filter(entry => {
+                if (entry.type === 'cash') {
+                    return entry.dagilim.some(d => d.personelId === personelFilter);
+                }
+                if (entry.type === 'expense') {
+                    return entry.personelId === personelFilter;
+                }
+                return false;
+            });
+        }
+
 
         return result.sort((a,b) => b.islemTarihi.getTime() - a.islemTarihi.getTime());
-    }, [combinedEntries, dateRange, statusFilter, branchFilter, showBranchFilter, typeFilter]);
+    }, [combinedEntries, dateRange, statusFilter, branchFilter, showBranchFilter, typeFilter, personelFilter]);
 
     const totalAmount = useMemo(() => {
-        if (typeFilter === 'expense') {
-            return filteredEntries.reduce((sum, entry) => {
-                if(entry.type === 'expense') return sum + entry.tutar;
-                return sum;
-            }, 0);
-        }
         return filteredEntries.reduce((sum, entry) => {
-            if(entry.type === 'cash') return sum + entry.totalAmount;
-            if(entry.type === 'expense' && entry.hesaplandi) return sum - entry.tutar;
+            if (entry.type === 'cash') {
+                if (personelFilter !== 'all') {
+                    const personAmount = entry.dagilim.find(d => d.personelId === personelFilter)?.miktar || 0;
+                    return sum + personAmount;
+                }
+                return sum + entry.totalAmount;
+            }
+            if (entry.type === 'expense') {
+                 if (personelFilter !== 'all' && entry.personelId !== personelFilter) {
+                    return sum;
+                 }
+                 if(entry.hesaplandi) return sum - entry.tutar;
+            }
             return sum;
         }, 0);
-    }, [filteredEntries, typeFilter]);
+    }, [filteredEntries, personelFilter]);
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
@@ -697,6 +718,20 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                         </SelectContent>
                     </Select>
                  )}
+                  <Select value={personelFilter} onValueChange={setPersonelFilter}>
+                    <SelectTrigger className="w-[200px]">
+                        <User className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Personel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tüm Personel</SelectItem>
+                        {personelOptions.map(personel => (
+                            <SelectItem key={personel.personelId} value={personel.personelId}>
+                                {personel.adi}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
                  <Button onClick={handleExportPDF} variant="outline">
                     <FileDown className="mr-2 h-4 w-4" />
                     PDF Olarak Aktar
@@ -727,12 +762,15 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                                                 </div>
                                                 {entry.dagilim.length > 0 && (
                                                     <div className="pl-4 mt-1 text-xs text-muted-foreground space-y-1">
-                                                        {entry.dagilim.map((d, i) => (
-                                                            <div key={i} className="flex items-center gap-2">
-                                                                <Users className="h-3 w-3" />
-                                                                <span>{d.adi}: ₺{d.miktar.toFixed(2)}</span>
-                                                            </div>
-                                                        ))}
+                                                        {entry.dagilim.map((d, i) => {
+                                                            if (personelFilter !== 'all' && d.personelId !== personelFilter) return null;
+                                                            return (
+                                                                <div key={i} className="flex items-center gap-2">
+                                                                    <Users className="h-3 w-3" />
+                                                                    <span>{d.adi}: ₺{d.miktar.toFixed(2)}</span>
+                                                                </div>
+                                                            )
+                                                        })}
                                                     </div>
                                                 )}
                                             </>
@@ -757,7 +795,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                                     )}
                                 </TableCell>
                                 <TableCell className={cn("text-right font-medium", entry.type === 'expense' && "text-destructive")}>
-                                     {entry.type === 'cash' ? `+₺${entry.totalAmount.toFixed(2)}` : `-₺${entry.tutar.toFixed(2)}`}
+                                     {entry.type === 'cash' ? `+₺${personelFilter !== 'all' ? (entry.dagilim.find(d => d.personelId === personelFilter)?.miktar || 0).toFixed(2) : entry.totalAmount.toFixed(2)}` : `-₺${entry.tutar.toFixed(2)}`}
                                 </TableCell>
                             </TableRow>
                         )) : (
@@ -897,6 +935,7 @@ export default function CashRegisterPage() {
                             cashEntries={userBranchCashEntries}
                             expenses={userBranchExpenses}
                             branches={branches}
+                            staff={staff}
                             showBranchFilter={true}
                          />
                     ) : (
@@ -940,6 +979,7 @@ export default function CashRegisterPage() {
                                     cashEntries={userBranchCashEntries}
                                     expenses={userBranchExpenses}
                                     branches={branches}
+                                    staff={staff}
                                     showBranchFilter={false}
                                  />
                             </TabsContent>
