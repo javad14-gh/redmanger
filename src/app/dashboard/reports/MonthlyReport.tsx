@@ -13,6 +13,7 @@ import {
   format,
   setMonth,
   setYear,
+  startOfDay,
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -110,7 +111,10 @@ export function MonthlyReport() {
         
         const leaveDays = personShifts.filter(s => s.tur === 'izinli').length;
         const workShifts = personShifts.filter(s => s.tur === 'calisma');
-        const workedDays = personShifts.length;
+        
+        // Correctly calculate worked days by counting unique days
+        const uniqueDays = new Set(personShifts.map(s => format(startOfDay(s.tarih), 'yyyy-MM-dd')));
+        const workedDays = uniqueDays.size;
 
 
         workShifts.forEach(shift => {
