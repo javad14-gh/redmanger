@@ -555,6 +555,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
                     return entry.dagilim.some(d => d.personelId === personelFilter);
                 }
                 if (entry.type === 'expense') {
+                    // Only show expenses if the selected person created them
                     return entry.personelId === personelFilter;
                 }
                 return false;
