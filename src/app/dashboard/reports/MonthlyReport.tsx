@@ -110,7 +110,7 @@ export function MonthlyReport() {
         
         const leaveDays = personShifts.filter(s => s.tur === 'izinli').length;
         const workShifts = personShifts.filter(s => s.tur === 'calisma');
-        const workedDays = workShifts.length;
+        const workedDays = personShifts.length;
 
 
         workShifts.forEach(shift => {
