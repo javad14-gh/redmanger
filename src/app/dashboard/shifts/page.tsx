@@ -392,6 +392,8 @@ const ShiftPlanningTab = () => {
                 personelAdi: personel.adi, // Denormalize name
                 tarih: Timestamp.fromDate(startOfDay(selectedDate)),
                 tur: data.tur,
+                // ALWAYS update the duration based on the profile
+                planliSureDakika: (personel.tanimlananSaat || 8) * 60,
             };
 
             if (data.tur === 'calisma') {
@@ -402,11 +404,9 @@ const ShiftPlanningTab = () => {
                     return;
                 }
                 shiftPayload.planliGiris = Timestamp.fromDate(combinedDate);
-                // Use the defined hours from the staff's profile
-                shiftPayload.planliSureDakika = (personel.tanimlananSaat || 8) * 60;
             } else {
                 shiftPayload.planliGiris = deleteField();
-                shiftPayload.planliSureDakika = deleteField();
+                // We keep planliSureDakika for leave days for potential reporting, but remove times
                 shiftPayload.girisSaati = deleteField();
                 shiftPayload.cikisSaati = deleteField();
             }
