@@ -35,7 +35,7 @@ const DailyEntryTab = ({ staff, branchId, personelId, todaysEntry, pendingAmount
     const [distribution, setDistribution] = useState<Record<string, number | ''>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const branchManagers = useMemo(() => staff.filter(s => s.rol === 'sube-muduru' || s.rol === 'genel-mudur'), [staff]);
+    const branchManagers = useMemo(() => staff.filter(s => s.rol === 'sube-muduru'), [staff]);
 
     useEffect(() => {
         const initialDistribution: Record<string, number | ''> = {};
@@ -510,7 +510,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
         }, {} as Record<string, string>);
     }, [branches]);
     
-    const personelOptions = useMemo(() => staff.filter(s => s.rol === 'sube-muduru' || s.rol === 'genel-mudur'), [staff]);
+    const personelOptions = useMemo(() => staff.filter(s => s.rol === 'sube-muduru'), [staff]);
 
 
     const combinedEntries = useMemo((): ReportItem[] => {
