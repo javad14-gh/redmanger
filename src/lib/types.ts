@@ -19,6 +19,17 @@ export interface Personel {
   canManageInventory?: boolean; // Izin kontrolü için yeni alan
   aktif?: boolean; // Personelin aktif olup olmadığını belirtir
   notificationTokens?: string[]; // For push notifications
+  puan?: number;
+}
+
+export interface PuanGirdisi {
+    puanId: string;
+    personelId: string;
+    verenMudurId: string;
+    verenMudurAdi: string;
+    puan: number;
+    aciklama: string;
+    tarih: Date;
 }
 
 export interface Vardiya {
@@ -61,17 +72,25 @@ export interface StokSayimi {
   sayimDetaylari: StokSayimDetayi[];
 }
 
+export interface NakitDagilimDetayi {
+    personelId: string;
+    adi: string;
+    miktar: number;
+}
+
 export interface CashEntry {
   cashEntryId: string;
   subeId: string;
-  personelId: string;
+  personelId: string; // The user who submitted the entry
   islemTarihi: Date; // The business date
   zamanDamgasi: Date; // The actual timestamp of submission
-  nakitMiktari: number;
+  dagilim: NakitDagilimDetayi[]; // Cash distribution among managers
   teslimDurumu: 'beklemede' | 'teslim edildi';
   teslimTarihi?: Date;
   topluTeslimId?: string; // To group batched handovers
-  personelAdi?: string; // Denormalized for reporting
+  personelAdi?: string; // Denormalized name of the submitting user
+  // nakitMiktari is now obsolete
+  nakitMiktari?: number;
 }
 
 export interface Expense {

@@ -13,11 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, writeBatch, Timestamp, serverTimestamp, where, query, orderBy, getDocs, setDoc, deleteField, updateDoc } from 'firebase/firestore';
-import { CashEntry, Personel, Sube, Expense, AppUser } from '@/lib/types';
+import { CashEntry, Personel, Sube, Expense, AppUser, NakitDagilimDetayi } from '@/lib/types';
 import { format, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn, getBusinessDate } from '@/lib/utils';
-import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft, FileDown } from 'lucide-react';
+import { Loader2, Wallet, HandCoins, CheckCheck, PiggyBank, Calendar as CalendarIcon, FileText, Building, CreditCard, MinusCircle, PlusCircle, CheckCircle2, CircleAlert, ArrowRightLeft, FileDown, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -30,21 +30,33 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 
-const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unsettledExpenses, personelName, selectedDate, onDateChange }: { branchId: string, personelId: string, todaysEntry?: CashEntry, pendingAmount: number, unsettledExpenses: number, personelName: string, selectedDate: Date, onDateChange: (date: Date) => void }) => {
+const DailyEntryTab = ({ staff, branchId, personelId, todaysEntry, pendingAmount, unsettledExpenses, personelName, selectedDate, onDateChange }: { staff: Personel[], branchId: string, personelId: string, todaysEntry?: CashEntry, pendingAmount: number, unsettledExpenses: number, personelName: string, selectedDate: Date, onDateChange: (date: Date) => void }) => {
     const { toast } = useToast();
-    const [amount, setAmount] = useState<number | string>('');
-    const [isHandedOver, setIsHandedOver] = useState(false);
+    const [distribution, setDistribution] = useState<Record<string, number | ''>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const branchManagers = useMemo(() => staff.filter(s => s.rol === 'sube-muduru' || s.rol === 'genel-mudur'), [staff]);
+
     useEffect(() => {
-        if (todaysEntry) {
-            setAmount(todaysEntry.nakitMiktari);
-            setIsHandedOver(todaysEntry.teslimDurumu === 'teslim edildi');
-        } else {
-            setAmount('');
-            setIsHandedOver(false);
-        }
-    }, [todaysEntry]);
+        const initialDistribution: Record<string, number | ''> = {};
+        branchManagers.forEach(manager => {
+            const existing = todaysEntry?.dagilim.find(d => d.personelId === manager.personelId);
+            initialDistribution[manager.personelId] = existing ? existing.miktar : '';
+        });
+        setDistribution(initialDistribution);
+    }, [todaysEntry, branchManagers]);
+
+    const handleAmountChange = (managerId: string, amount: string) => {
+        const numericAmount = amount === '' ? '' : parseFloat(amount);
+        setDistribution(prev => ({
+            ...prev,
+            [managerId]: numericAmount
+        }));
+    };
+    
+    const totalAmount = useMemo(() => {
+        return Object.values(distribution).reduce((sum, amount) => sum + (Number(amount) || 0), 0);
+    }, [distribution]);
 
     const handleSave = async () => {
         if (!branchId || !personelId) {
@@ -52,11 +64,25 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unset
             return;
         }
 
-        const numericAmount = Number(amount);
-        if (isNaN(numericAmount) || numericAmount < 0) {
-            toast({ title: 'Hata', description: 'Lütfen geçerli bir tutar girin.', variant: 'destructive' });
+        const dagilim: NakitDagilimDetayi[] = Object.entries(distribution)
+            .map(([managerId, miktar]) => {
+                const manager = branchManagers.find(m => m.personelId === managerId);
+                if (manager && Number(miktar) > 0) {
+                    return {
+                        personelId: managerId,
+                        adi: manager.adi,
+                        miktar: Number(miktar)
+                    };
+                }
+                return null;
+            })
+            .filter((item): item is NakitDagilimDetayi => item !== null);
+        
+        if (dagilim.length === 0) {
+            toast({ title: 'Hata', description: 'Lütfen en az bir yönetici için tutar girin.', variant: 'destructive' });
             return;
         }
+
 
         setIsSubmitting(true);
         try {
@@ -70,18 +96,9 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unset
                 personelAdi: personelName,
                 islemTarihi: businessDate,
                 zamanDamgasi: new Date(),
-                nakitMiktari: numericAmount,
-                teslimDurumu: isHandedOver ? 'teslim edildi' : 'beklemede',
+                dagilim: dagilim,
+                teslimDurumu: 'beklemede', // Default status
             };
-            
-            if (isHandedOver) {
-                entryData.teslimTarihi = new Date();
-            } else {
-                // To remove a field, we use deleteField(), but it can only be used with updateDoc
-                // A better approach is to not include the field at all when it's not needed.
-                // We'll let setDoc with merge handle it. For clarity, we can use an update if doc exists.
-                entryData.teslimTarihi = deleteField() as any;
-            }
             
             await setDoc(docRef, entryData, { merge: true });
 
@@ -102,7 +119,7 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unset
                 <CardHeader className="p-0 flex-row justify-between items-center">
                     <div>
                         <CardTitle>Günün Kaydı</CardTitle>
-                        <CardDescription>Günün sonunda kasadaki net nakit tutarını girin.</CardDescription>
+                        <CardDescription>Her yöneticinin uhdesindeki nakit tutarını girin.</CardDescription>
                     </div>
                      <Popover>
                         <PopoverTrigger asChild>
@@ -125,28 +142,28 @@ const DailyEntryTab = ({ branchId, personelId, todaysEntry, pendingAmount, unset
                     </Popover>
                 </CardHeader>
                 <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label htmlFor="amount" className="text-sm font-medium">Kasadaki Toplam Nakit (₺)</label>
-                        <Input
-                            id="amount"
-                            type="number"
-                            placeholder="Örn: 1540.50"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            disabled={!isEntryEditable}
-                        />
+                    <div className='space-y-3 rounded-md border p-4'>
+                        <h4 className="font-medium flex items-center gap-2"><Users/> Yönetici Nakit Dağılımı</h4>
+                        {branchManagers.map(manager => (
+                             <div key={manager.personelId} className="flex items-center gap-3">
+                                 <label htmlFor={`amount-${manager.personelId}`} className="text-sm font-medium flex-1">{manager.adi}</label>
+                                 <Input
+                                     id={`amount-${manager.personelId}`}
+                                     type="number"
+                                     placeholder="Tutar (₺)"
+                                     value={distribution[manager.personelId] || ''}
+                                     onChange={(e) => handleAmountChange(manager.personelId, e.target.value)}
+                                     disabled={!isEntryEditable}
+                                     className="w-32"
+                                 />
+                             </div>
+                        ))}
+                         <div className="flex items-center justify-between pt-3 border-t">
+                            <span className='font-bold text-lg'>Toplam Tutar</span>
+                            <span className='font-bold text-lg font-mono'>₺{totalAmount.toFixed(2)}</span>
+                         </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="handed-over"
-                            checked={isHandedOver}
-                            onCheckedChange={(checked) => setIsHandedOver(Boolean(checked))}
-                            disabled={!isEntryEditable}
-                        />
-                        <label htmlFor="handed-over" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            Genel Müdüre Teslim Edildi
-                        </label>
-                    </div>
+                  
                     {isEntryEditable ? (
                         <Button onClick={handleSave} disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Wallet className="mr-2" />}
@@ -249,7 +266,7 @@ const BatchHandoverTab = ({ pendingEntries, branchId }: { pendingEntries: CashEn
     const totalSelectedAmount = useMemo(() => {
         return pendingEntries
             .filter(entry => selectedEntries[entry.cashEntryId])
-            .reduce((sum, entry) => sum + entry.nakitMiktari, 0);
+            .reduce((sum, entry) => sum + (entry.dagilim?.reduce((s, d) => s + d.miktar, 0) || 0), 0);
     }, [selectedEntries, pendingEntries]);
 
     const allSelected = pendingEntries.length > 0 && pendingEntries.every(e => selectedEntries[e.cashEntryId]);
@@ -281,18 +298,21 @@ const BatchHandoverTab = ({ pendingEntries, branchId }: { pendingEntries: CashEn
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {pendingEntries.map(entry => (
-                                    <TableRow key={entry.cashEntryId}>
-                                        <TableCell>
-                                             <Checkbox 
-                                                onCheckedChange={(checked) => handleSelect(entry.cashEntryId, Boolean(checked))}
-                                                checked={!!selectedEntries[entry.cashEntryId]}
-                                            />
-                                        </TableCell>
-                                        <TableCell>{format(entry.islemTarihi, 'd MMMM yyyy', {locale: tr})}</TableCell>
-                                        <TableCell className="text-right">₺{entry.nakitMiktari.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                ))}
+                                {pendingEntries.map(entry => {
+                                    const total = entry.dagilim?.reduce((s,d) => s + d.miktar, 0) || 0;
+                                    return (
+                                        <TableRow key={entry.cashEntryId}>
+                                            <TableCell>
+                                                 <Checkbox 
+                                                    onCheckedChange={(checked) => handleSelect(entry.cashEntryId, Boolean(checked))}
+                                                    checked={!!selectedEntries[entry.cashEntryId]}
+                                                />
+                                            </TableCell>
+                                            <TableCell>{format(entry.islemTarihi, 'd MMMM yyyy', {locale: tr})}</TableCell>
+                                            <TableCell className="text-right">₺{total.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    )
+                                })}
                             </TableBody>
                         </Table>
                     </div>
@@ -472,7 +492,8 @@ const AddExpenseTab = ({ user, branchId, personelId, branchExpenses, onToggleExp
     );
 };
 
-type ReportItem = (CashEntry & { type: 'cash' }) | (Expense & { type: 'expense'; islemTarihi: Date });
+type ReportItem = (CashEntry & { type: 'cash'; totalAmount: number; }) | (Expense & { type: 'expense'; islemTarihi: Date });
+
 
 const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { cashEntries: CashEntry[], expenses: Expense[], branches: Sube[], showBranchFilter: boolean }) => {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -489,7 +510,11 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
     }, [branches]);
 
     const combinedEntries = useMemo((): ReportItem[] => {
-        const cash: ReportItem[] = cashEntries.map(e => ({ ...e, type: 'cash', islemTarihi: e.islemTarihi }));
+        const cash: ReportItem[] = cashEntries.map(e => ({ 
+            ...e, 
+            type: 'cash', 
+            totalAmount: e.dagilim.reduce((sum, d) => sum + d.miktar, 0)
+        }));
         const expenseItems: ReportItem[] = expenses.map(e => ({ ...e, type: 'expense', islemTarihi: e.tarih }));
         return [...cash, ...expenseItems];
     }, [cashEntries, expenses]);
@@ -532,7 +557,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
             }, 0);
         }
         return filteredEntries.reduce((sum, entry) => {
-            if(entry.type === 'cash') return sum + entry.nakitMiktari;
+            if(entry.type === 'cash') return sum + entry.totalAmount;
             if(entry.type === 'expense' && entry.hesaplandi) return sum - entry.tutar;
             return sum;
         }, 0);
@@ -552,7 +577,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                 entry.type === 'cash' 
                     ? (entry.teslimDurumu === 'teslim edildi' ? 'Teslim Edildi' : 'Beklemede')
                     : (entry.hesaplandi ? 'Hesaplandı' : 'Beklemede'),
-                entry.type === 'cash' ? `+${entry.nakitMiktari.toFixed(2)}` : `-${entry.tutar.toFixed(2)}`
+                entry.type === 'cash' ? `+${entry.totalAmount.toFixed(2)}` : `-${entry.tutar.toFixed(2)}`
             ];
             tableRows.push(rowData);
         });
@@ -703,7 +728,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                                     )}
                                 </TableCell>
                                 <TableCell className={cn("text-right font-medium", entry.type === 'expense' && "text-destructive")}>
-                                     {entry.type === 'cash' ? `+₺${entry.nakitMiktari.toFixed(2)}` : `-₺${entry.tutar.toFixed(2)}`}
+                                     {entry.type === 'cash' ? `+₺${entry.totalAmount.toFixed(2)}` : `-₺${entry.tutar.toFixed(2)}`}
                                 </TableCell>
                             </TableRow>
                         )) : (
@@ -724,14 +749,14 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
 }
 
 export default function CashRegisterPage() {
-    const { user, firebaseUser, cashEntries, branches, expenses, isLoading: isAppLoading } = useApp();
+    const { user, firebaseUser, cashEntries, branches, expenses, isLoading: isAppLoading, staff } = useApp();
     const [selectedDate, setSelectedDate] = useState<Date>(getBusinessDate());
     const { toast } = useToast();
     
     const isGeneralManager = user?.role === 'genel-mudur';
     
-    const {userBranchCashEntries, userBranchExpenses} = useMemo(() => {
-        if (!user) return { userBranchCashEntries: [], userBranchExpenses: [] };
+    const {userBranchCashEntries, userBranchExpenses, userBranchStaff } = useMemo(() => {
+        if (!user) return { userBranchCashEntries: [], userBranchExpenses: [], userBranchStaff: [] };
         
         const filteredCash = isGeneralManager
             ? cashEntries
@@ -740,12 +765,17 @@ export default function CashRegisterPage() {
         const filteredExpenses = isGeneralManager
             ? expenses
             : expenses.filter(e => e.subeId === user.branchId);
+            
+        const filteredStaff = isGeneralManager
+            ? staff
+            : staff.filter(s => s.subeId === user.branchId);
 
         return { 
             userBranchCashEntries: filteredCash.sort((a, b) => b.zamanDamgasi.getTime() - a.zamanDamgasi.getTime()),
-            userBranchExpenses: filteredExpenses.sort((a,b) => b.zamanDamgasi.getTime() - a.zamanDamgasi.getTime())
+            userBranchExpenses: filteredExpenses.sort((a,b) => b.zamanDamgasi.getTime() - a.zamanDamgasi.getTime()),
+            userBranchStaff: filteredStaff,
         };
-    }, [user, cashEntries, expenses, isGeneralManager]);
+    }, [user, cashEntries, expenses, staff, isGeneralManager]);
 
     const todaysEntry = useMemo(() => {
         if (!userBranchCashEntries) return undefined;
@@ -755,7 +785,10 @@ export default function CashRegisterPage() {
     const pendingEntries = useMemo(() => userBranchCashEntries.filter(e => e.teslimDurumu === 'beklemede'), [userBranchCashEntries]);
     
     const { pendingAmount, unsettledExpensesTotal } = useMemo(() => {
-        const pendingCash = pendingEntries.reduce((sum, entry) => sum + entry.nakitMiktari, 0);
+        const pendingCash = pendingEntries.reduce((sum, entry) => {
+            const entryTotal = entry.dagilim?.reduce((s, d) => s + d.miktar, 0) || 0;
+            return sum + entryTotal;
+        }, 0);
         const unsettledExpenses = userBranchExpenses
             .filter(e => !e.hesaplandi)
             .reduce((sum, exp) => sum + exp.tutar, 0);
@@ -847,6 +880,7 @@ export default function CashRegisterPage() {
                             </TabsList>
                             <TabsContent value="daily" className="pt-6">
                                 <DailyEntryTab 
+                                    staff={userBranchStaff}
                                     branchId={branchId}
                                     personelId={firebaseUser.uid}
                                     todaysEntry={todaysEntry}

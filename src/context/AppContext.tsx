@@ -5,7 +5,7 @@
 import React from 'react';
 import { createContext, useState, useMemo, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppUser, Sube, Personel, Urun, Vardiya, KontrolListesi, StokSayimi, CashEntry, Expense, SalesReport } from '@/lib/types';
+import { AppUser, Sube, Personel, Urun, Vardiya, KontrolListesi, StokSayimi, CashEntry, Expense, SalesReport, PuanGirdisi } from '@/lib/types';
 import * as mockData from '@/lib/mock-data';
 import { auth, db } from '@/lib/firebase';
 import {
@@ -29,6 +29,7 @@ interface AppContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<{success: boolean, error?: string}>;
   branches: Sube[];
   staff: Personel[];
+  scoreEntries: PuanGirdisi[];
   products: Urun[];
   shifts: Vardiya[];
   stockCounts: StokSayimi[];
@@ -46,6 +47,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [branches, setBranches] = useState<Sube[]>([]);
   const [staff, setStaff] = useState<Personel[]>([]);
+  const [scoreEntries, setScoreEntries] = useState<PuanGirdisi[]>([]);
   const [products, setProducts] = useState<Urun[]>([]);
   const [shifts, setShifts] = useState<Vardiya[]>([]);
   const [stockCounts, setStockCounts] = useState<StokSayimi[]>([]);
@@ -115,6 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCashEntries([]);
       setExpenses([]);
       setSalesReports([]);
+      setScoreEntries([]);
       return;
     }
 
@@ -123,10 +126,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const collectionsToSubscribe = [
         { name: 'branches', setter: setBranches },
         { name: 'users', setter: setStaff, idField: 'personelId' },
+        { name: 'scoreEntries', setter: setScoreEntries, idField: 'puanId', dateFields: ['tarih'] },
         { name: 'products', setter: setProducts, idField: 'urunId', dateFields: ['sonGuncelleme'] },
         { name: 'shifts', setter: setShifts, idField: 'vardiyaId', dateFields: ['tarih', 'planliGiris', 'girisSaati', 'cikisSaati'] },
         { name: 'stockCounts', setter: setStockCounts, idField: 'sayimId', dateFields: ['zamanDamgasi'] },
-        { name: 'cashEntries', setter: setCashEntries, idField: 'cashEntryId', dateFields: ['islemTarihi', 'zamanDamgasi', 'teslimTarihi'] },
+        { name: 'cashEntries', setter: (data: any[]) => {
+            const migratedData = data.map(entry => {
+                if (entry.nakitMiktari && !entry.dagilim) {
+                    return {
+                        ...entry,
+                        dagilim: [{
+                            personelId: entry.personelId,
+                            adi: entry.personelAdi || 'Bilinmiyor',
+                            miktar: entry.nakitMiktari
+                        }]
+                    };
+                }
+                return entry;
+            });
+            setCashEntries(migratedData);
+        }, idField: 'cashEntryId', dateFields: ['islemTarihi', 'zamanDamgasi', 'teslimTarihi'] },
         { name: 'expenses', setter: setExpenses, idField: 'expenseId', dateFields: ['tarih', 'zamanDamgasi'] },
         { name: 'salesReports', setter: setSalesReports, idField: 'reportId', dateFields: ['reportDate', 'createdAt'] },
     ];
@@ -215,6 +234,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       changePassword,
       branches,
       staff,
+      scoreEntries,
       products,
       shifts,
       stockCounts,
@@ -224,7 +244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       checklists: mockData.kontrolListeleri, // This is now obsolete but kept for now to avoid breaking other parts
       isLoading,
     }),
-    [user, firebaseUser, isLoading, branches, staff, products, shifts, stockCounts, cashEntries, expenses, salesReports]
+    [user, firebaseUser, isLoading, branches, staff, scoreEntries, products, shifts, stockCounts, cashEntries, expenses, salesReports]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
