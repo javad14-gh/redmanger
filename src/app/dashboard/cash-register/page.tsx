@@ -78,8 +78,8 @@ const DailyEntryTab = ({ staff, branchId, personelId, todaysEntry, pendingAmount
             })
             .filter((item): item is NakitDagilimDetayi => item !== null);
         
-        if (dagilim.length === 0) {
-            toast({ title: 'Hata', description: 'Lütfen en az bir yönetici için tutar girin.', variant: 'destructive' });
+        if (dagilim.length === 0 && totalAmount > 0) {
+             toast({ title: 'Hata', description: 'Lütfen en az bir yönetici için tutar girin.', variant: 'destructive' });
             return;
         }
 
@@ -565,23 +565,36 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        
-        const tableColumns = ["Tarih", "Açıklama", "Şube", "Durum", "Tutar"];
-        const tableRows: (string | number)[][] = [];
+        const body: (string | number)[][] = [];
 
         filteredEntries.forEach(entry => {
-            const rowData = [
-                format(entry.islemTarihi, 'dd.MM.yyyy', { locale: tr }),
-                entry.type === 'cash' ? 'Kasa Girişi' : entry.aciklama,
-                branchMap[entry.subeId] || 'Bilinmiyor',
-                entry.type === 'cash' 
-                    ? (entry.teslimDurumu === 'teslim edildi' ? 'Teslim Edildi' : 'Beklemede')
-                    : (entry.hesaplandi ? 'Hesaplandı' : 'Beklemede'),
-                entry.type === 'cash' ? `+${entry.totalAmount.toFixed(2)}` : `-${entry.tutar.toFixed(2)}`
-            ];
-            tableRows.push(rowData);
-        });
+            if (entry.type === 'cash') {
+                const mainRow = [
+                    format(entry.islemTarihi, 'dd.MM.yyyy'),
+                    'Kasa Girişi',
+                    branchMap[entry.subeId] || 'Bilinmiyor',
+                    entry.teslimDurumu === 'teslim edildi' ? 'Teslim Edildi' : 'Beklemede',
+                    `+${entry.totalAmount.toFixed(2)}`
+                ];
+                body.push(mainRow);
 
+                if(entry.dagilim.length > 0){
+                    entry.dagilim.forEach(d => {
+                        const subRow = ['', `  - ${d.adi}`, '', '', `+${d.miktar.toFixed(2)}`];
+                        body.push(subRow);
+                    });
+                }
+            } else {
+                 const rowData = [
+                    format(entry.islemTarihi, 'dd.MM.yyyy'),
+                    entry.aciklama,
+                    branchMap[entry.subeId] || 'Bilinmiyor',
+                    entry.hesaplandi ? 'Hesaplandı' : 'Beklemede',
+                    `-${entry.tutar.toFixed(2)}`
+                ];
+                body.push(rowData);
+            }
+        });
 
         let title = "Kasa Raporu";
         if (dateRange?.from) {
@@ -594,17 +607,17 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
         doc.text(title, 14, 15);
         
         (doc as any).autoTable({
-            head: [tableColumns],
-            body: tableRows,
+            head: [["Tarih", "Açıklama / Dağılım", "Şube", "Durum", "Tutar"]],
+            body: body,
             startY: 20,
             theme: 'striped',
             headStyles: { fillColor: [22, 163, 74] },
-             foot: [['', '', '', 'Genel Toplam', `₺${totalAmount.toFixed(2)}`]],
+            foot: [['', '', '', 'Genel Toplam', `₺${totalAmount.toFixed(2)}`]],
             footStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontStyle: 'bold' }
         });
 
         doc.save('Kasa-Raporu.pdf');
-         toast({ title: 'Başarılı', description: 'Rapor PDF olarak indirildi.' });
+        toast({ title: 'Başarılı', description: 'Rapor PDF olarak indirildi.' });
     };
 
     return (
@@ -706,13 +719,29 @@ const ReportingTab = ({ cashEntries, expenses, branches, showBranchFilter }: { c
                             <TableRow key={entry.type + (entry.type === 'cash' ? entry.cashEntryId : entry.expenseId)}>
                                 <TableCell>{format(entry.islemTarihi, 'd MMM yyyy', {locale: tr})}</TableCell>
                                 <TableCell>
-                                    <div className='flex items-center gap-2'>
+                                    <div className='flex flex-col gap-1'>
                                         {entry.type === 'cash' ? (
-                                            <Badge variant='secondary' className='border-green-300'>Kasa Girişi</Badge>
+                                            <>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant='secondary' className='border-green-300'>Kasa Girişi</Badge>
+                                                </div>
+                                                {entry.dagilim.length > 0 && (
+                                                    <div className="pl-4 mt-1 text-xs text-muted-foreground space-y-1">
+                                                        {entry.dagilim.map((d, i) => (
+                                                            <div key={i} className="flex items-center gap-2">
+                                                                <Users className="h-3 w-3" />
+                                                                <span>{d.adi}: ₺{d.miktar.toFixed(2)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </>
                                         ) : (
-                                            <Badge variant='secondary' className='border-red-300'>Harcama</Badge>
+                                            <div className='flex items-center gap-2'>
+                                                <Badge variant='secondary' className='border-red-300'>Harcama</Badge>
+                                                <span>{entry.aciklama}</span>
+                                            </div>
                                         )}
-                                        {entry.type === 'expense' && <span>{entry.aciklama}</span>}
                                     </div>
                                 </TableCell>
                                 <TableCell>{branchMap[entry.subeId] || 'Bilinmiyor'}</TableCell>
