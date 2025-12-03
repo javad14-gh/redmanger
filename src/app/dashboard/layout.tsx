@@ -27,6 +27,7 @@ const navItems = [
       { href: '/dashboard/reports/sales', label: 'Satış Analizi', roles: ['genel-mudur', 'sube-muduru']},
     ]
   },
+  { href: '/dashboard/performance', icon: Users, label: 'Performans', roles: ['genel-mudur', 'sube-muduru'] },
   { href: '/dashboard/ai-tools', icon: Bot, label: 'Satış Girişi', roles: ['genel-mudur', 'sube-muduru'] },
   { 
     href: '/dashboard/management', 
