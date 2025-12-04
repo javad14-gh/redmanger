@@ -1,6 +1,7 @@
+// src/app/dashboard/management/performance-rules/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,6 +21,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 const ruleSchema = z.object({
@@ -192,6 +195,17 @@ export default function PerformanceRulesPage() {
 
   const isManager = user?.role === 'genel-mudur' || user?.role === 'sube-muduru';
 
+  const groupedRules = useMemo(() => {
+    return performanceRules.reduce((acc, rule) => {
+      const category = rule.category || 'Diğer';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(rule);
+      return acc;
+    }, {} as Record<string, PerformanceRule[]>);
+  }, [performanceRules]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-start">
@@ -218,52 +232,72 @@ export default function PerformanceRulesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Award/> Tanımlanmış Kurallar</CardTitle>
-          <CardDescription>Oluşturulmuş tüm performans kuralları aşağıda listelenmiştir.</CardDescription>
+          <CardDescription>Oluşturulmuş tüm performans kuralları aşağıda kategorilere ayrılmış şekilde listelenmiştir.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          ) : performanceRules.length > 0 ? (
-            <div className="space-y-4">
-              {performanceRules.map(rule => (
-                <Card key={rule.ruleId} className={cn("flex flex-col md:flex-row items-start md:items-center justify-between p-4", rule.type === 'bonus' ? 'bg-green-50/20 dark:bg-green-900/10' : 'bg-red-50/20 dark:bg-red-900/10')}>
-                  <div className="flex-1 mb-4 md:mb-0">
-                    <div className="flex items-center gap-2">
-                        <p className="font-bold flex items-center gap-2">
-                            {rule.name}
-                            <span className={cn('font-bold text-lg', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
-                            ({rule.score > 0 ? `+${rule.score}` : rule.score})
-                            </span>
-                        </p>
-                        <Badge variant="outline">{rule.category}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{rule.description || 'Açıklama yok'}</p>
-                  </div>
-                  {isManager && (
-                    <div className="flex gap-2 self-end md:self-center">
-                      <Button variant="outline" size="icon" onClick={() => openEditForm(rule)}><Edit/></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="icon"><Trash2/></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              "{rule.name}" kuralını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteRule(rule.ruleId)}>Evet, Sil</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
+          ) : Object.keys(groupedRules).length > 0 ? (
+             <Accordion type="multiple" defaultValue={Object.keys(groupedRules)} className="w-full space-y-4">
+                {Object.entries(groupedRules).map(([category, rules]) => (
+                    <AccordionItem value={category} key={category} className="border rounded-lg bg-card">
+                       <AccordionTrigger className="px-4 text-lg font-medium hover:no-underline">
+                           <div className='flex items-center gap-2'>
+                             {category} ({rules.length})
+                           </div>
+                       </AccordionTrigger>
+                       <AccordionContent className="p-0">
+                           <div className="border-t">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Kural Adı</TableHead>
+                                        <TableHead>Açıklama</TableHead>
+                                        <TableHead className='text-center'>Puan</TableHead>
+                                        {isManager && <TableHead className="text-right">İşlemler</TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {rules.map(rule => (
+                                        <TableRow key={rule.ruleId}>
+                                            <TableCell className="font-medium">{rule.name}</TableCell>
+                                            <TableCell className="text-muted-foreground">{rule.description || '-'}</TableCell>
+                                            <TableCell className={cn('text-center font-bold text-lg', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
+                                                {rule.score > 0 ? `+${rule.score}` : rule.score}
+                                            </TableCell>
+                                            {isManager && (
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                      <Button variant="outline" size="icon" onClick={() => openEditForm(rule)}><Edit className="h-4 w-4"/></Button>
+                                                      <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                          <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                          <AlertDialogHeader>
+                                                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                              "{rule.name}" kuralını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                                            </AlertDialogDescription>
+                                                          </AlertDialogHeader>
+                                                          <AlertDialogFooter>
+                                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteRule(rule.ruleId)}>Evet, Sil</AlertDialogAction>
+                                                          </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                      </AlertDialog>
+                                                    </div>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                           </div>
+                       </AccordionContent>
+                    </AccordionItem>
+                ))}
+             </Accordion>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
               <p>Henüz bir performans kuralı oluşturulmamış.</p>
