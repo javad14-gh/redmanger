@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Personel, PuanGirdisi, PerformanceRule, PerformanceRuleCategory } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ export default function PerformancePage() {
     const [selectedRuleId, setSelectedRuleId] = useState<string>('');
     const [aciklama, setAciklama] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState(new Date());
 
     const manageableStaff = useMemo(() => {
         if (!user) return [];
@@ -44,20 +45,65 @@ export default function PerformancePage() {
     }, [user, staff]);
 
     const staffWithScores = useMemo(() => {
-        const staffMap = new Map<string, Personel & { currentScore: number }>();
-        staff.forEach(s => {
-            staffMap.set(s.personelId, { ...s, currentScore: s.puan || 0 });
+        const monthStart = startOfMonth(selectedMonth);
+        const monthEnd = endOfMonth(selectedMonth);
+
+        const staffScores = staff.map(personel => {
+            const personelEntries = scoreEntries.filter(entry => 
+                entry.personelId === personel.personelId && 
+                isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
+            );
+
+            const directScore = personelEntries.reduce((sum, entry) => sum + entry.puan, 0);
+
+            let purityBonuses = {
+                Operational: 5,
+                Discipline: 5,
+                Customer: 5,
+            };
+
+            let categoryErrorCounts: Record<PerformanceRuleCategory, number> = {
+                Operational: 0,
+                Discipline: 0,
+                Customer: 0,
+            };
+            
+            // Only process negative scores for purity deduction
+            const penaltyEntries = personelEntries
+                .filter(entry => entry.puan < 0)
+                .sort((a,b) => a.tarih.getTime() - b.tarih.getTime()); // Chronological order is important
+
+            penaltyEntries.forEach(entry => {
+                const rule = performanceRules.find(r => r.ruleId === entry.ruleId);
+                if (!rule) return;
+                
+                const category = rule.category;
+                categoryErrorCounts[category]++;
+                
+                const deduction = Math.abs(rule.score) * categoryErrorCounts[category] * 0.1;
+                
+                purityBonuses[category] = Math.max(0, purityBonuses[category] - deduction);
+            });
+            
+            const totalPurityBonus = Object.values(purityBonuses).reduce((sum, bonus) => sum + bonus, 0);
+            
+            const finalScore = 75 + directScore + totalPurityBonus;
+
+            return {
+                ...personel,
+                calculatedScore: finalScore,
+            };
         });
         
-        const staffList = Array.from(staffMap.values()).filter(s => {
-            if(user?.role === 'genel-mudur') return true;
-            if(user?.role === 'sube-muduru') return s.subeId === user.branchId;
-            return false;
-        })
-        
-        return staffList.sort((a, b) => (b.currentScore) - (a.currentScore));
+        return staffScores
+            .filter(s => {
+                if(user?.role === 'genel-mudur') return true;
+                if(user?.role === 'sube-muduru') return s.subeId === user.branchId;
+                return false;
+            })
+            .sort((a, b) => b.calculatedScore - a.calculatedScore);
 
-    }, [staff, user]);
+    }, [staff, scoreEntries, performanceRules, selectedMonth, user]);
     
     const recentScoreEntries = useMemo(() => {
         return scoreEntries
@@ -100,16 +146,14 @@ export default function PerformancePage() {
                 verenMudurAdi: user?.name || '',
                 puan: selectedRule.score,
                 aciklama: `${selectedRule.name}${aciklama ? `: ${aciklama.trim()}` : ''}`,
-                tarih: new Date()
+                tarih: new Date(),
+                ruleId: selectedRule.ruleId
             };
             batch.set(newEntryRef, newEntry);
             
-            const personelRef = doc(db, 'users', selectedPersonelId);
-            const targetPersonel = staff.find(s => s.personelId === selectedPersonelId);
-            const currentScore = targetPersonel?.puan || 0;
-            const newScore = currentScore + selectedRule.score;
-
-            batch.update(personelRef, { puan: newScore });
+            // Note: The raw 'puan' field on the user document is no longer the source of truth
+            // for the final score, but we can still update it for a quick reference if needed.
+            // For now, we rely on the dynamic calculation.
 
             await batch.commit();
 
@@ -226,9 +270,9 @@ export default function PerformancePage() {
                     <Card>
                         <CardHeader>
                              <CardTitle className="flex items-center gap-2">
-                                <Award /> Genel Puan Durumu
+                                <Award /> Genel Puan Durumu ({format(selectedMonth, 'MMMM yyyy', {locale: tr})})
                             </CardTitle>
-                             <CardDescription>Tüm personelin mevcut toplam puanları.</CardDescription>
+                             <CardDescription>Tüm personelin, formüle göre hesaplanmış anlık puanları.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
@@ -244,8 +288,8 @@ export default function PerformancePage() {
                                                 <p className="text-xs text-muted-foreground">{p.rol}</p>
                                             </div>
                                         </div>
-                                        <div className={`font-bold text-lg ${p.puan && p.puan > 0 ? 'text-green-600' : (p.puan && p.puan < 0 ? 'text-red-600' : '')}`}>
-                                            {p.puan || 0}
+                                        <div className={`font-bold text-lg ${p.calculatedScore > 75 ? 'text-green-600' : (p.calculatedScore < 75 ? 'text-red-600' : '')}`}>
+                                            {p.calculatedScore.toFixed(2)}
                                         </div>
                                     </div>
                                 ))}
@@ -266,7 +310,7 @@ export default function PerformancePage() {
                                         <TableRow>
                                             <TableHead>Personel</TableHead>
                                             <TableHead>Açıklama</TableHead>
-                                            <TableHead>İşlemi Yapan</TableHead>
+                                            <TableHead>Tarih</TableHead>
                                             <TableHead className="text-right">Puan</TableHead>
                                         </TableRow>
                                     </TableHeader>

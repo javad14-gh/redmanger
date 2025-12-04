@@ -30,6 +30,7 @@ export interface PuanGirdisi {
     puan: number;
     aciklama: string;
     tarih: Date;
+    ruleId?: string; // To link back to the rule
 }
 
 export type PerformanceRuleCategory = 'Operational' | 'Discipline' | 'Customer';
