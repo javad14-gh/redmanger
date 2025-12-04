@@ -61,15 +61,15 @@ const ManagerView = () => {
             const directScore = personelEntries.reduce((sum, entry) => sum + entry.puan, 0);
 
             let purityBonuses: Record<PerformanceRuleCategory, number> = {
-                Operational: 5,
-                Discipline: 5,
-                Customer: 5,
+                'Operasyon ve Kalite': 5,
+                'Davranış ve Disiplin': 5,
+                'Müşteri Memnuniyeti': 5,
             };
 
             let categoryErrorCounts: Record<PerformanceRuleCategory, number> = {
-                Operational: 0,
-                Discipline: 0,
-                Customer: 0,
+                'Operasyon ve Kalite': 0,
+                'Davranış ve Disiplin': 0,
+                'Müşteri Memnuniyeti': 0,
             };
             
             const penaltyEntries = personelEntries
@@ -128,7 +128,7 @@ const ManagerView = () => {
             }
             acc[category].push(rule);
             return acc;
-        }, {} as Record<PerformanceRuleCategory | 'Diğer', PerformanceRule[]>);
+        }, {} as Record<string, PerformanceRule[]>);
     }, [performanceRules]);
 
 
@@ -327,11 +327,15 @@ const EmployeeView = () => {
         const directScore = personelEntries.reduce((sum, entry) => sum + entry.puan, 0);
 
         let purityBonuses: Record<PerformanceRuleCategory, number> = {
-            Operational: 5, Discipline: 5, Customer: 5,
+            'Operasyon ve Kalite': 5,
+            'Davranış ve Disiplin': 5,
+            'Müşteri Memnuniyeti': 5,
         };
 
         let categoryErrorCounts: Record<PerformanceRuleCategory, number> = {
-            Operational: 0, Discipline: 0, Customer: 0,
+            'Operasyon ve Kalite': 0,
+            'Davranış ve Disiplin': 0,
+            'Müşteri Memnuniyeti': 0,
         };
         
         const penaltyEntries = personelEntries

@@ -33,7 +33,7 @@ export interface PuanGirdisi {
     ruleId?: string; // To link back to the rule
 }
 
-export type PerformanceRuleCategory = 'Operational' | 'Discipline' | 'Customer';
+export type PerformanceRuleCategory = 'Operasyon ve Kalite' | 'Davranış ve Disiplin' | 'Müşteri Memnuniyeti';
 
 export interface PerformanceRule {
   ruleId: string;

@@ -27,7 +27,7 @@ const ruleSchema = z.object({
   description: z.string().optional(),
   score: z.coerce.number().refine(val => val !== 0, 'Puan 0 olamaz.'),
   type: z.enum(['bonus', 'penalty']),
-  category: z.enum(['Operational', 'Discipline', 'Customer']),
+  category: z.enum(['Operasyon ve Kalite', 'Davranış ve Disiplin', 'Müşteri Memnuniyeti']),
 });
 
 type RuleFormData = z.infer<typeof ruleSchema>;
@@ -46,7 +46,7 @@ const RuleForm = ({ rule, onFormSubmit, closeDialog }: { rule?: PerformanceRule,
             description: '',
             score: 0,
             type: 'penalty',
-            category: 'Operational',
+            category: 'Operasyon ve Kalite',
         },
     });
 
@@ -60,7 +60,7 @@ const RuleForm = ({ rule, onFormSubmit, closeDialog }: { rule?: PerformanceRule,
         closeDialog();
     };
     
-    const categories: PerformanceRuleCategory[] = ['Operational', 'Discipline', 'Customer'];
+    const categories: PerformanceRuleCategory[] = ['Operasyon ve Kalite', 'Davranış ve Disiplin', 'Müşteri Memnuniyeti'];
 
     return (
         <Form {...form}>
