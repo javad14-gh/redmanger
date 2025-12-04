@@ -13,11 +13,13 @@ import { PlusCircle, Trash2, Edit, Save, Loader2, Award, ChevronsRight } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
-import { PerformanceRule } from '@/lib/types';
+import { PerformanceRule, PerformanceRuleCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 
 const ruleSchema = z.object({
@@ -25,6 +27,7 @@ const ruleSchema = z.object({
   description: z.string().optional(),
   score: z.coerce.number().refine(val => val !== 0, 'Puan 0 olamaz.'),
   type: z.enum(['bonus', 'penalty']),
+  category: z.enum(['Operational', 'Discipline', 'Customer']),
 });
 
 type RuleFormData = z.infer<typeof ruleSchema>;
@@ -37,11 +40,13 @@ const RuleForm = ({ rule, onFormSubmit, closeDialog }: { rule?: PerformanceRule,
             description: rule.description,
             score: rule.score,
             type: rule.type,
+            category: rule.category,
         } : {
             name: '',
             description: '',
             score: 0,
             type: 'penalty',
+            category: 'Operational',
         },
     });
 
@@ -54,6 +59,8 @@ const RuleForm = ({ rule, onFormSubmit, closeDialog }: { rule?: PerformanceRule,
         form.reset();
         closeDialog();
     };
+    
+    const categories: PerformanceRuleCategory[] = ['Operational', 'Discipline', 'Customer'];
 
     return (
         <Form {...form}>
@@ -72,6 +79,28 @@ const RuleForm = ({ rule, onFormSubmit, closeDialog }: { rule?: PerformanceRule,
                         <FormMessage />
                     </FormItem>
                 )}/>
+                 <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Kategori</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Kategori seçin" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {categories.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
                 <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem className="space-y-3">
                         <FormLabel>Kural Tipi</FormLabel>
@@ -206,12 +235,15 @@ export default function PerformanceRulesPage() {
               {performanceRules.map(rule => (
                 <Card key={rule.ruleId} className={cn("flex flex-col md:flex-row items-start md:items-center justify-between p-4", rule.type === 'bonus' ? 'bg-green-50/20 dark:bg-green-900/10' : 'bg-red-50/20 dark:bg-red-900/10')}>
                   <div className="flex-1 mb-4 md:mb-0">
-                    <p className="font-bold flex items-center gap-2">
-                        {rule.name}
-                        <span className={cn('font-bold text-lg', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
-                          ({rule.score > 0 ? `+${rule.score}` : rule.score})
-                        </span>
-                    </p>
+                    <div className="flex items-center gap-2">
+                        <p className="font-bold flex items-center gap-2">
+                            {rule.name}
+                            <span className={cn('font-bold text-lg', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
+                            ({rule.score > 0 ? `+${rule.score}` : rule.score})
+                            </span>
+                        </p>
+                        <Badge variant="outline">{rule.category}</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">{rule.description || 'Açıklama yok'}</p>
                   </div>
                   <div className="flex gap-2 self-end md:self-center">

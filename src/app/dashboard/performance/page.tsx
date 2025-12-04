@@ -4,14 +4,14 @@ import { useApp } from '@/hooks/use-app';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, TrendingUp, TrendingDown, ChevronsRight, Award, User, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, writeBatch, updateDoc } from 'firebase/firestore';
-import { Personel, PuanGirdisi, PerformanceRule } from '@/lib/types';
+import { Personel, PuanGirdisi, PerformanceRule, PerformanceRuleCategory } from '@/lib/types';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -68,6 +68,18 @@ export default function PerformancePage() {
             return { ...entry, personelAdi: personel?.adi || 'Bilinmiyor' };
         });
     }, [scoreEntries, staff]);
+
+    const groupedRules = useMemo(() => {
+        return performanceRules.reduce((acc, rule) => {
+            const category = rule.category || 'Diğer';
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(rule);
+            return acc;
+        }, {} as Record<PerformanceRuleCategory | 'Diğer', PerformanceRule[]>);
+    }, [performanceRules]);
+
 
     const handleSubmit = async () => {
         const selectedRule = performanceRules.find(r => r.ruleId === selectedRuleId);
@@ -172,18 +184,25 @@ export default function PerformancePage() {
                                     <SelectValue placeholder="Bir kural seçin..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {performanceRules.length > 0 ? performanceRules.map(rule => (
-                                        <SelectItem key={rule.ruleId} value={rule.ruleId}>
-                                            <div className='flex justify-between w-full'>
-                                                <span>{rule.name}</span>
-                                                <span className={cn('font-bold', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
-                                                    {rule.score > 0 ? `+${rule.score}` : rule.score}
-                                                </span>
-                                            </div>
-                                        </SelectItem>
-                                    )) : (
+                                    {performanceRules.length > 0 ? (
+                                        Object.entries(groupedRules).map(([category, rules]) => (
+                                            <SelectGroup key={category}>
+                                                <SelectLabel>{category}</SelectLabel>
+                                                {rules.map(rule => (
+                                                    <SelectItem key={rule.ruleId} value={rule.ruleId}>
+                                                        <div className='flex justify-between w-full'>
+                                                            <span>{rule.name}</span>
+                                                            <span className={cn('font-bold', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
+                                                                {rule.score > 0 ? `+${rule.score}` : rule.score}
+                                                            </span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        ))
+                                    ) : (
                                         <div className='p-4 text-center text-sm text-muted-foreground'>
-                                            Hiç kural tanımlanmamış. <Link href="/dashboard/management/performance-rules" className='underline text-primary'>Tanımla</Link>
+                                            Hiç kural tanımlanmamış. <a href="/dashboard/management/performance-rules" className='underline text-primary'>Tanımla</a>
                                         </div>
                                     )}
                                 </SelectContent>

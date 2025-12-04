@@ -32,12 +32,15 @@ export interface PuanGirdisi {
     tarih: Date;
 }
 
+export type PerformanceRuleCategory = 'Operational' | 'Discipline' | 'Customer';
+
 export interface PerformanceRule {
   ruleId: string;
   name: string;
   description?: string;
   score: number;
   type: 'bonus' | 'penalty';
+  category: PerformanceRuleCategory;
 }
 
 export interface Vardiya {
