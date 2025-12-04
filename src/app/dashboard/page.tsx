@@ -4,10 +4,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Hourglass, HandCoins, BarChart2, LogIn, LogOut, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Hourglass, HandCoins, BarChart2, LogIn, LogOut, MapPin, CheckCircle, XCircle, Award } from 'lucide-react';
 import Link from 'next/link';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { Vardiya, SalesReport, Sube } from '@/lib/types';
+import { Vardiya, SalesReport, Sube, PerformanceRuleCategory } from '@/lib/types';
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from 'recharts';
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { getBusinessDate, getDistanceInMeters } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, setDoc, collection, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection, Timestamp } from 'firestore';
 import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -261,10 +261,10 @@ const EmployeeClockInCard = () => {
 
 
 export default function DashboardPage() {
-  const { user, firebaseUser, shifts, cashEntries, salesReports, expenses } = useApp();
+  const { user, firebaseUser, shifts, cashEntries, salesReports, expenses, scoreEntries, performanceRules } = useApp();
 
-  const { monthlyOvertime, pendingNetBalance } = useMemo(() => {
-    if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingNetBalance: 0 };
+  const { monthlyOvertime, pendingNetBalance, monthlyPerformanceScore } = useMemo(() => {
+    if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingNetBalance: 0, monthlyPerformanceScore: 'N/A' };
     
     const now = new Date();
     const monthStart = startOfMonth(now);
@@ -282,7 +282,7 @@ export default function DashboardPage() {
     const branchCashEntries = cashEntries.filter(e => user.role === 'genel-mudur' || e.subeId === user.branchId);
     const pendingCash = branchCashEntries
         .filter(e => e.teslimDurumu === 'beklemede')
-        .reduce((sum, entry) => sum + entry.nakitMiktari, 0);
+        .reduce((sum, entry) => sum + (entry.dagilim?.reduce((s, d) => s + d.miktar, 0) || 0), 0);
         
     const branchExpenses = expenses.filter(e => user.role === 'genel-mudur' || e.subeId === user.branchId);
     const unsettledExpenses = branchExpenses
@@ -290,10 +290,44 @@ export default function DashboardPage() {
         .reduce((sum, exp) => sum + exp.tutar, 0);
 
     const netBalance = pendingCash - unsettledExpenses;
+    
+    // --- Performance Score Calculation ---
+    const personelEntries = scoreEntries.filter(entry => 
+        entry.personelId === firebaseUser.uid && 
+        isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
+    );
 
-    return { monthlyOvertime: overtime, pendingNetBalance: netBalance };
+    const directScore = personelEntries.reduce((sum, entry) => sum + entry.puan, 0);
 
-  }, [user, firebaseUser, shifts, cashEntries, expenses]);
+    let purityBonuses: Record<PerformanceRuleCategory, number> = {
+        Operational: 5, Discipline: 5, Customer: 5,
+    };
+    let categoryErrorCounts: Record<PerformanceRuleCategory, number> = {
+        Operational: 0, Discipline: 0, Customer: 0,
+    };
+    
+    const penaltyEntries = personelEntries
+        .filter(entry => entry.puan < 0)
+        .sort((a,b) => a.tarih.getTime() - b.tarih.getTime());
+
+    penaltyEntries.forEach(entry => {
+        const rule = performanceRules.find(r => r.ruleId === entry.ruleId);
+        if (!rule) return;
+        
+        const category = rule.category;
+        categoryErrorCounts[category]++;
+        
+        const deduction = Math.abs(rule.score) * categoryErrorCounts[category] * 0.1;
+        purityBonuses[category] = Math.max(0, purityBonuses[category] - deduction);
+    });
+    
+    const totalPurityBonus = Object.values(purityBonuses).reduce((sum, bonus) => sum + bonus, 0);
+    const baseScoreComponent = 75 + directScore;
+    const finalScore = baseScoreComponent + totalPurityBonus;
+
+    return { monthlyOvertime: overtime, pendingNetBalance: netBalance, monthlyPerformanceScore: finalScore.toFixed(2) };
+
+  }, [user, firebaseUser, shifts, cashEntries, expenses, scoreEntries, performanceRules]);
 
     const weeklySalesChartData = useMemo(() => {
         if (!salesReports || salesReports.length === 0) return [];
@@ -390,13 +424,25 @@ export default function DashboardPage() {
                 />
             </Link>
         }
+        { (user.role === 'calisan' || user.role === 'sube-muduru') && 
+            <Link href="/dashboard/performance">
+                <StatCard 
+                    title="Bu Ayki Performans Puanın"
+                    value={monthlyPerformanceScore}
+                    icon={Award}
+                    description="Detayları görmek için tıklayın."
+                />
+            </Link>
+        }
         { user.role === 'sube-muduru' && 
-             <StatCard 
-                title="Bekleyen Net Bakiye"
-                value={`₺${pendingNetBalance.toFixed(2)}`}
-                icon={HandCoins}
-                description="Teslim edilecek nakit ve harcamalar sonrası net tutar."
-            />
+             <Link href="/dashboard/cash-register">
+                 <StatCard 
+                    title="Bekleyen Net Bakiye"
+                    value={`₺${pendingNetBalance.toFixed(2)}`}
+                    icon={HandCoins}
+                    description="Teslim edilecek nakit ve harcamalar sonrası net tutar."
+                />
+            </Link>
         }
       </div>
 
