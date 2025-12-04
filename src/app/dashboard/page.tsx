@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { getBusinessDate, getDistanceInMeters } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, setDoc, collection, Timestamp } from 'firestore';
+import { doc, updateDoc, setDoc, collection, Timestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -509,3 +509,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
