@@ -263,8 +263,8 @@ const EmployeeClockInCard = () => {
 export default function DashboardPage() {
   const { user, firebaseUser, shifts, cashEntries, salesReports, expenses, scoreEntries, performanceRules } = useApp();
 
-  const { monthlyOvertime, pendingNetBalance, monthlyPerformanceScore } = useMemo(() => {
-    if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingNetBalance: 0, monthlyPerformanceScore: 'N/A' };
+  const { monthlyOvertime, pendingNetBalance, performanceScore } = useMemo(() => {
+    if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingNetBalance: 0, performanceScore: { base: 'N/A', bonus: 'N/A' } };
     
     const now = new Date();
     const monthStart = startOfMonth(now);
@@ -323,9 +323,15 @@ export default function DashboardPage() {
     
     const totalPurityBonus = Object.values(purityBonuses).reduce((sum, bonus) => sum + bonus, 0);
     const baseScoreComponent = 75 + directScore;
-    const finalScore = baseScoreComponent + totalPurityBonus;
 
-    return { monthlyOvertime: overtime, pendingNetBalance: netBalance, monthlyPerformanceScore: finalScore.toFixed(2) };
+    return { 
+        monthlyOvertime: overtime, 
+        pendingNetBalance: netBalance, 
+        performanceScore: {
+            base: baseScoreComponent.toFixed(2),
+            bonus: totalPurityBonus.toFixed(2)
+        }
+    };
 
   }, [user, firebaseUser, shifts, cashEntries, expenses, scoreEntries, performanceRules]);
 
@@ -428,7 +434,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/performance">
                 <StatCard 
                     title="Bu Ayki Performans Puanın"
-                    value={monthlyPerformanceScore}
+                    value={`${performanceScore.base} (${performanceScore.bonus})`}
                     icon={Award}
                     description="Detayları görmek için tıklayın."
                 />
