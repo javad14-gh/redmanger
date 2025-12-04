@@ -6,7 +6,7 @@ import { useApp } from '@/hooks/use-app';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, SidebarInset, SidebarFooter, useSidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import Logo from '@/components/Logo';
 import { UserNav } from '@/components/UserNav';
-import { AreaChart, Bot, Clock, FileText, LayoutDashboard, ListChecks, Loader2, PanelLeftClose, Settings, Users, Warehouse, Wallet, Award } from 'lucide-react';
+import { AreaChart, Bot, Clock, FileText, LayoutDashboard, ListChecks, Loader2, PanelLeftClose, Settings, Users, Warehouse, Wallet, Award, BookCopy } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -27,7 +27,15 @@ const navItems = [
       { href: '/dashboard/reports/sales', label: 'Satış Analizi', roles: ['genel-mudur', 'sube-muduru']},
     ]
   },
-  { href: '/dashboard/performance', icon: Award, label: 'Performans' },
+  { 
+    href: '/dashboard/performance', 
+    icon: Award, 
+    label: 'Performans',
+    subItems: [
+      { href: '/dashboard/performance', label: 'Puan Detayları' },
+      { href: '/dashboard/management/performance-rules', label: 'Performans Kuralları' },
+    ]
+  },
   { href: '/dashboard/ai-tools', icon: Bot, label: 'Satış Girişi', roles: ['genel-mudur', 'sube-muduru'] },
   { 
     href: '/dashboard/management', 
@@ -38,7 +46,6 @@ const navItems = [
       { href: '/dashboard/management/staff', label: 'Personel' },
       { href: '/dashboard/management/branches', label: 'Şubeler', roles: ['genel-mudur'] },
       { href: '/dashboard/management/checklists', label: 'Checklist Tanımları' },
-      { href: '/dashboard/management/performance-rules', label: 'Performans Kuralları' },
     ]
   },
 ];
@@ -116,7 +123,7 @@ export default function DashboardLayout({
             {navItems.filter(item => userHasAccess(item)).map((item) => (
               item.subItems && item.subItems.length > 0 ? (
                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href) && !item.subItems.some(sub => sub.href === pathname)}>
                       <Link href={item.href}>
                         <item.icon />
                         <span>{item.label}</span>

@@ -190,14 +190,7 @@ export default function PerformanceRulesPage() {
     setFormOpen(true);
   }
 
-  if (user?.role === 'calisan') {
-    return (
-      <Card>
-        <CardHeader><CardTitle>Erişim Reddedildi</CardTitle></CardHeader>
-        <CardContent><p>Bu sayfayı görüntüleme yetkiniz yok.</p></CardContent>
-      </Card>
-    );
-  }
+  const isManager = user?.role === 'genel-mudur' || user?.role === 'sube-muduru';
 
   return (
     <div className="flex flex-col gap-4">
@@ -206,7 +199,7 @@ export default function PerformanceRulesPage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">Performans Kuralları Yönetimi</h1>
           <p className="text-muted-foreground">Performans değerlendirmesi için standart ödül ve ceza puanları oluşturun.</p>
         </div>
-        <Button onClick={openNewForm}><PlusCircle/> Yeni Kural Ekle</Button>
+        {isManager && <Button onClick={openNewForm}><PlusCircle/> Yeni Kural Ekle</Button>}
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
@@ -246,33 +239,35 @@ export default function PerformanceRulesPage() {
                     </div>
                     <p className="text-sm text-muted-foreground">{rule.description || 'Açıklama yok'}</p>
                   </div>
-                  <div className="flex gap-2 self-end md:self-center">
-                    <Button variant="outline" size="icon" onClick={() => openEditForm(rule)}><Edit/></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="icon"><Trash2/></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            "{rule.name}" kuralını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>İptal</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteRule(rule.ruleId)}>Evet, Sil</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                  {isManager && (
+                    <div className="flex gap-2 self-end md:self-center">
+                      <Button variant="outline" size="icon" onClick={() => openEditForm(rule)}><Edit/></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="icon"><Trash2/></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              "{rule.name}" kuralını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteRule(rule.ruleId)}>Evet, Sil</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
               <p>Henüz bir performans kuralı oluşturulmamış.</p>
-              <Button variant="link" onClick={openNewForm}>Şimdi bir tane oluşturun.</Button>
+              {isManager && <Button variant="link" onClick={openNewForm}>Şimdi bir tane oluşturun.</Button>}
             </div>
           )}
         </CardContent>
