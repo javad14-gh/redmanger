@@ -56,7 +56,7 @@ export default function PerformancePage() {
 
             const directScore = personelEntries.reduce((sum, entry) => sum + entry.puan, 0);
 
-            let purityBonuses = {
+            let purityBonuses: Record<PerformanceRuleCategory, number> = {
                 Operational: 5,
                 Discipline: 5,
                 Customer: 5,
@@ -68,10 +68,9 @@ export default function PerformancePage() {
                 Customer: 0,
             };
             
-            // Only process negative scores for purity deduction
             const penaltyEntries = personelEntries
                 .filter(entry => entry.puan < 0)
-                .sort((a,b) => a.tarih.getTime() - b.tarih.getTime()); // Chronological order is important
+                .sort((a,b) => a.tarih.getTime() - b.tarih.getTime());
 
             penaltyEntries.forEach(entry => {
                 const rule = performanceRules.find(r => r.ruleId === entry.ruleId);
@@ -80,18 +79,21 @@ export default function PerformancePage() {
                 const category = rule.category;
                 categoryErrorCounts[category]++;
                 
+                // Formula: Deduction = (PenaltyScore * RepetitionFactor * 0.1)
                 const deduction = Math.abs(rule.score) * categoryErrorCounts[category] * 0.1;
                 
                 purityBonuses[category] = Math.max(0, purityBonuses[category] - deduction);
             });
             
             const totalPurityBonus = Object.values(purityBonuses).reduce((sum, bonus) => sum + bonus, 0);
-            
-            const finalScore = 75 + directScore + totalPurityBonus;
+            const baseScoreComponent = 75 + directScore;
+            const finalScore = baseScoreComponent + totalPurityBonus;
 
             return {
                 ...personel,
-                calculatedScore: finalScore,
+                finalScore: finalScore,
+                baseScoreComponent: baseScoreComponent,
+                purityBonusComponent: totalPurityBonus,
             };
         });
         
@@ -101,7 +103,7 @@ export default function PerformancePage() {
                 if(user?.role === 'sube-muduru') return s.subeId === user.branchId;
                 return false;
             })
-            .sort((a, b) => b.calculatedScore - a.calculatedScore);
+            .sort((a, b) => b.finalScore - a.finalScore);
 
     }, [staff, scoreEntries, performanceRules, selectedMonth, user]);
     
@@ -151,10 +153,6 @@ export default function PerformancePage() {
             };
             batch.set(newEntryRef, newEntry);
             
-            // Note: The raw 'puan' field on the user document is no longer the source of truth
-            // for the final score, but we can still update it for a quick reference if needed.
-            // For now, we rely on the dynamic calculation.
-
             await batch.commit();
 
             toast({ title: 'Başarılı', description: 'Performans girdisi başarıyla kaydedildi.'});
@@ -288,8 +286,9 @@ export default function PerformancePage() {
                                                 <p className="text-xs text-muted-foreground">{p.rol}</p>
                                             </div>
                                         </div>
-                                        <div className={`font-bold text-lg ${p.calculatedScore > 75 ? 'text-green-600' : (p.calculatedScore < 75 ? 'text-red-600' : '')}`}>
-                                            {p.calculatedScore.toFixed(2)}
+                                        <div className="flex items-center gap-2 text-right">
+                                            <span className="font-bold text-lg">{p.baseScoreComponent.toFixed(2)}</span>
+                                            <span className="font-bold text-green-600">({p.purityBonusComponent.toFixed(2)})</span>
                                         </div>
                                     </div>
                                 ))}
