@@ -5,7 +5,7 @@
 import React from 'react';
 import { createContext, useState, useMemo, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppUser, Sube, Personel, Urun, Vardiya, KontrolListesi, StokSayimi, CashEntry, Expense, SalesReport, PuanGirdisi } from '@/lib/types';
+import { AppUser, Sube, Personel, Urun, Vardiya, KontrolListesi, StokSayimi, CashEntry, Expense, SalesReport, PuanGirdisi, PerformanceRule } from '@/lib/types';
 import * as mockData from '@/lib/mock-data';
 import { auth, db } from '@/lib/firebase';
 import {
@@ -30,6 +30,7 @@ interface AppContextType {
   branches: Sube[];
   staff: Personel[];
   scoreEntries: PuanGirdisi[];
+  performanceRules: PerformanceRule[];
   products: Urun[];
   shifts: Vardiya[];
   stockCounts: StokSayimi[];
@@ -48,6 +49,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [branches, setBranches] = useState<Sube[]>([]);
   const [staff, setStaff] = useState<Personel[]>([]);
   const [scoreEntries, setScoreEntries] = useState<PuanGirdisi[]>([]);
+  const [performanceRules, setPerformanceRules] = useState<PerformanceRule[]>([]);
   const [products, setProducts] = useState<Urun[]>([]);
   const [shifts, setShifts] = useState<Vardiya[]>([]);
   const [stockCounts, setStockCounts] = useState<StokSayimi[]>([]);
@@ -118,6 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setExpenses([]);
       setSalesReports([]);
       setScoreEntries([]);
+      setPerformanceRules([]);
       return;
     }
 
@@ -127,6 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         { name: 'branches', setter: setBranches },
         { name: 'users', setter: setStaff, idField: 'personelId' },
         { name: 'scoreEntries', setter: setScoreEntries, idField: 'puanId', dateFields: ['tarih'] },
+        { name: 'performanceRules', setter: setPerformanceRules, idField: 'ruleId' },
         { name: 'products', setter: setProducts, idField: 'urunId', dateFields: ['sonGuncelleme'] },
         { name: 'shifts', setter: setShifts, idField: 'vardiyaId', dateFields: ['tarih', 'planliGiris', 'girisSaati', 'cikisSaati'] },
         { name: 'stockCounts', setter: setStockCounts, idField: 'sayimId', dateFields: ['zamanDamgasi'] },
@@ -235,6 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       branches,
       staff,
       scoreEntries,
+      performanceRules,
       products,
       shifts,
       stockCounts,
@@ -244,7 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       checklists: mockData.kontrolListeleri, // This is now obsolete but kept for now to avoid breaking other parts
       isLoading,
     }),
-    [user, firebaseUser, isLoading, branches, staff, scoreEntries, products, shifts, stockCounts, cashEntries, expenses, salesReports]
+    [user, firebaseUser, isLoading, branches, staff, scoreEntries, performanceRules, products, shifts, stockCounts, cashEntries, expenses, salesReports]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

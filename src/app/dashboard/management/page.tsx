@@ -1,9 +1,8 @@
-// src/app/dashboard/management/page.tsx
 'use client';
 
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, ListChecks, Users } from 'lucide-react';
+import { Building, ListChecks, Users, Award } from 'lucide-react';
 import Link from 'next/link';
 
 const ManagementCard = ({ href, icon: Icon, title, description }: { href: string, icon: React.ElementType, title: string, description: string }) => (
@@ -39,6 +38,13 @@ export default function ManagementPage() {
             icon: ListChecks,
             title: 'Checklist Tanımları',
             description: 'Günlük, haftalık veya özel kontrol listeleri oluşturun ve düzenleyin.',
+            roles: ['genel-mudur', 'sube-muduru'],
+        },
+        {
+            href: '/dashboard/management/performance-rules',
+            icon: Award,
+            title: 'Performans Kuralları',
+            description: 'Ödül ve ceza puanlarını standartlaştırın.',
             roles: ['genel-mudur', 'sube-muduru'],
         },
         {

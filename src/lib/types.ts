@@ -32,6 +32,14 @@ export interface PuanGirdisi {
     tarih: Date;
 }
 
+export interface PerformanceRule {
+  ruleId: string;
+  name: string;
+  description?: string;
+  score: number;
+  type: 'bonus' | 'penalty';
+}
+
 export interface Vardiya {
   vardiyaId: string;
   subeId:string;

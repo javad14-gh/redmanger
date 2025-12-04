@@ -6,7 +6,7 @@ import { useApp } from '@/hooks/use-app';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, SidebarInset, SidebarFooter, useSidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import Logo from '@/components/Logo';
 import { UserNav } from '@/components/UserNav';
-import { AreaChart, Bot, Clock, FileText, LayoutDashboard, ListChecks, Loader2, PanelLeftClose, Settings, Users, Warehouse, Wallet } from 'lucide-react';
+import { AreaChart, Bot, Clock, FileText, LayoutDashboard, ListChecks, Loader2, PanelLeftClose, Settings, Users, Warehouse, Wallet, Award } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -27,7 +27,7 @@ const navItems = [
       { href: '/dashboard/reports/sales', label: 'Satış Analizi', roles: ['genel-mudur', 'sube-muduru']},
     ]
   },
-  { href: '/dashboard/performance', icon: Users, label: 'Performans', roles: ['genel-mudur', 'sube-muduru'] },
+  { href: '/dashboard/performance', icon: Award, label: 'Performans', roles: ['genel-mudur', 'sube-muduru'] },
   { href: '/dashboard/ai-tools', icon: Bot, label: 'Satış Girişi', roles: ['genel-mudur', 'sube-muduru'] },
   { 
     href: '/dashboard/management', 
@@ -38,6 +38,7 @@ const navItems = [
       { href: '/dashboard/management/staff', label: 'Personel' },
       { href: '/dashboard/management/branches', label: 'Şubeler', roles: ['genel-mudur'] },
       { href: '/dashboard/management/checklists', label: 'Checklist Tanımları' },
+      { href: '/dashboard/management/performance-rules', label: 'Performans Kuralları' },
     ]
   },
 ];

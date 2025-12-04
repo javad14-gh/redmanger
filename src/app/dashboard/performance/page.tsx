@@ -1,4 +1,3 @@
-// src/app/dashboard/performance/page.tsx
 'use client';
 import { useState, useMemo } from 'react';
 import { useApp } from '@/hooks/use-app';
@@ -12,22 +11,24 @@ import { Loader2, TrendingUp, TrendingDown, ChevronsRight, Award, User, History 
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, writeBatch, updateDoc } from 'firebase/firestore';
-import { Personel, PuanGirdisi } from '@/lib/types';
+import { Personel, PuanGirdisi, PerformanceRule } from '@/lib/types';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
 
 const getStaffAvatar = (personel: Personel) => personel.avatarUrl || `https://picsum.photos/seed/${personel.personelId}/100/100`;
 const getStaffInitials = (name: string) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('') : 'P';
 
 
 export default function PerformancePage() {
-    const { user, firebaseUser, staff, scoreEntries, isLoading } = useApp();
+    const { user, firebaseUser, staff, scoreEntries, performanceRules, isLoading } = useApp();
     const { toast } = useToast();
     
     const [selectedPersonelId, setSelectedPersonelId] = useState<string>('');
-    const [puan, setPuan] = useState<string>('');
+    const [selectedRuleId, setSelectedRuleId] = useState<string>('');
     const [aciklama, setAciklama] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,14 +48,6 @@ export default function PerformancePage() {
         staff.forEach(s => {
             staffMap.set(s.personelId, { ...s, currentScore: s.puan || 0 });
         });
-
-        scoreEntries.forEach(entry => {
-            const staffMember = staffMap.get(entry.personelId);
-            if (staffMember) {
-                // This is for display logic; real score should be calculated from all entries
-                // staffMember.currentScore += entry.puan;
-            }
-        });
         
         const staffList = Array.from(staffMap.values()).filter(s => {
             if(user?.role === 'genel-mudur') return true;
@@ -64,7 +57,7 @@ export default function PerformancePage() {
         
         return staffList.sort((a, b) => (b.currentScore) - (a.currentScore));
 
-    }, [staff, scoreEntries, user]);
+    }, [staff, user]);
     
     const recentScoreEntries = useMemo(() => {
         return scoreEntries
@@ -77,14 +70,10 @@ export default function PerformancePage() {
     }, [scoreEntries, staff]);
 
     const handleSubmit = async () => {
-        if (!firebaseUser || !selectedPersonelId || !puan.trim()) {
-            toast({ title: 'Hata', description: 'Lütfen personel seçin ve bir puan girin.', variant: 'destructive'});
-            return;
-        }
+        const selectedRule = performanceRules.find(r => r.ruleId === selectedRuleId);
 
-        const puanValue = parseInt(puan, 10);
-        if (isNaN(puanValue)) {
-            toast({ title: 'Hata', description: 'Puan geçerli bir sayı olmalıdır.', variant: 'destructive'});
+        if (!firebaseUser || !selectedPersonelId || !selectedRule) {
+            toast({ title: 'Hata', description: 'Lütfen personel ve bir işlem türü seçin.', variant: 'destructive'});
             return;
         }
 
@@ -97,8 +86,8 @@ export default function PerformancePage() {
                 personelId: selectedPersonelId,
                 verenMudurId: firebaseUser.uid,
                 verenMudurAdi: user?.name || '',
-                puan: puanValue,
-                aciklama: aciklama.trim(),
+                puan: selectedRule.score,
+                aciklama: `${selectedRule.name}${aciklama ? `: ${aciklama.trim()}` : ''}`,
                 tarih: new Date()
             };
             batch.set(newEntryRef, newEntry);
@@ -106,15 +95,15 @@ export default function PerformancePage() {
             const personelRef = doc(db, 'users', selectedPersonelId);
             const targetPersonel = staff.find(s => s.personelId === selectedPersonelId);
             const currentScore = targetPersonel?.puan || 0;
-            const newScore = currentScore + puanValue;
+            const newScore = currentScore + selectedRule.score;
 
             batch.update(personelRef, { puan: newScore });
 
             await batch.commit();
 
-            toast({ title: 'Başarılı', description: 'Puan girdisi başarıyla kaydedildi.'});
+            toast({ title: 'Başarılı', description: 'Performans girdisi başarıyla kaydedildi.'});
             setSelectedPersonelId('');
-            setPuan('');
+            setSelectedRuleId('');
             setAciklama('');
 
         } catch (error) {
@@ -150,7 +139,7 @@ export default function PerformancePage() {
                     Performans Yönetimi
                 </h1>
                 <p className="text-muted-foreground">
-                    Personel performansını puanlama sistemi ile takip edin ve yönetin.
+                    Personel performansını standart kurallar ile takip edin ve yönetin.
                 </p>
             </div>
             
@@ -158,13 +147,13 @@ export default function PerformancePage() {
                 <Card className="lg:col-span-1">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                           <ChevronsRight /> Puan Ver / Ceza Uygula
+                           <ChevronsRight /> Performans Girdisi
                         </CardTitle>
-                        <CardDescription>Personele pozitif veya negatif puan verin.</CardDescription>
+                        <CardDescription>Personel için bir ödül veya ceza işlemi seçin.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Personel Seçin</label>
+                            <label className="text-sm font-medium">Personel</label>
                             <Select value={selectedPersonelId} onValueChange={setSelectedPersonelId}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Personel seç..." />
@@ -177,23 +166,38 @@ export default function PerformancePage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                             <label className="text-sm font-medium">Puan</label>
-                             <Input 
-                                type="number" 
-                                placeholder="Örn: 5 (ödül) veya -10 (ceza)"
-                                value={puan}
-                                onChange={(e) => setPuan(e.target.value)}
-                             />
+                             <label className="text-sm font-medium">İşlem Türü</label>
+                            <Select value={selectedRuleId} onValueChange={setSelectedRuleId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Bir kural seçin..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {performanceRules.length > 0 ? performanceRules.map(rule => (
+                                        <SelectItem key={rule.ruleId} value={rule.ruleId}>
+                                            <div className='flex justify-between w-full'>
+                                                <span>{rule.name}</span>
+                                                <span className={cn('font-bold', rule.score > 0 ? 'text-green-600' : 'text-red-600')}>
+                                                    {rule.score > 0 ? `+${rule.score}` : rule.score}
+                                                </span>
+                                            </div>
+                                        </SelectItem>
+                                    )) : (
+                                        <div className='p-4 text-center text-sm text-muted-foreground'>
+                                            Hiç kural tanımlanmamış. <Link href="/dashboard/management/performance-rules" className='underline text-primary'>Tanımla</Link>
+                                        </div>
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Açıklama</label>
+                            <label className="text-sm font-medium">Ek Açıklama (Opsiyonel)</label>
                             <Textarea 
-                                placeholder="Puanın nedenini kısaca açıklayın. Örn: 'Müşteri memnuniyeti' veya 'Sipariş hatası'."
+                                placeholder="Gerekirse bu işlemle ilgili ek detay verin."
                                 value={aciklama}
                                 onChange={(e) => setAciklama(e.target.value)}
                             />
                         </div>
-                        <Button onClick={handleSubmit} disabled={isSubmitting || !selectedPersonelId || !puan}>
+                        <Button onClick={handleSubmit} disabled={isSubmitting || !selectedPersonelId || !selectedRuleId}>
                             {isSubmitting ? <Loader2 className="animate-spin" /> : 'Kaydet'}
                         </Button>
                     </CardContent>
@@ -242,8 +246,8 @@ export default function PerformancePage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Personel</TableHead>
+                                            <TableHead>Açıklama</TableHead>
                                             <TableHead>İşlemi Yapan</TableHead>
-                                            <TableHead>Tarih</TableHead>
                                             <TableHead className="text-right">Puan</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -251,7 +255,7 @@ export default function PerformancePage() {
                                         {recentScoreEntries.map(entry => (
                                             <TableRow key={entry.puanId}>
                                                 <TableCell className="font-medium">{entry.personelAdi}</TableCell>
-                                                <TableCell className="text-muted-foreground">{entry.verenMudurAdi}</TableCell>
+                                                <TableCell className="text-muted-foreground">{entry.aciklama}</TableCell>
                                                 <TableCell>{format(entry.tarih, 'd MMM, HH:mm', { locale: tr })}</TableCell>
                                                 <TableCell className={`text-right font-bold ${entry.puan > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                     {entry.puan > 0 ? `+${entry.puan}` : entry.puan}
