@@ -35,11 +35,13 @@ export default function PerformancePage() {
 
     const manageableStaff = useMemo(() => {
         if (!user) return [];
+        const activeStaff = staff.filter(s => s.aktif !== false);
+        
         if (user.role === 'genel-mudur') {
-            return staff.filter(s => s.rol !== 'genel-mudur' && s.aktif !== false);
+            return activeStaff.filter(s => s.rol !== 'genel-mudur');
         }
         if (user.role === 'sube-muduru' && user.branchId) {
-            return staff.filter(s => s.subeId === user.branchId && s.rol === 'calisan' && s.aktif !== false);
+            return activeStaff.filter(s => s.subeId === user.branchId && s.rol === 'calisan');
         }
         return [];
     }, [user, staff]);
@@ -48,7 +50,9 @@ export default function PerformancePage() {
         const monthStart = startOfMonth(selectedMonth);
         const monthEnd = endOfMonth(selectedMonth);
 
-        const staffScores = staff.map(personel => {
+        const activeStaff = staff.filter(s => s.aktif !== false);
+
+        const staffScores = activeStaff.map(personel => {
             const personelEntries = scoreEntries.filter(entry => 
                 entry.personelId === personel.personelId && 
                 isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
