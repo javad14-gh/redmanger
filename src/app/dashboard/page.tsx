@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Hourglass, HandCoins, BarChart2, LogIn, LogOut, MapPin, CheckCircle, XCircle, Award } from 'lucide-react';
 import Link from 'next/link';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { Vardiya, SalesReport, Sube, PerformanceRuleCategory } from '@/lib/types';
+import { Vardiya, SalesReport, Sube, PerformanceRuleCategory, Personel } from '@/lib/types';
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from 'recharts';
@@ -86,20 +86,23 @@ const calculateOvertimeForShifts = (shifts: Vardiya[]): string => {
 };
 
 const EmployeeClockInCard = () => {
-    const { user, firebaseUser, shifts, branches } = useApp();
+    const { user, firebaseUser, shifts, branches, staff } = useApp();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('Durum kontrol ediliyor...');
     const [permissionAlert, setPermissionAlert] = useState<{ isOpen: boolean; message: string; action?: 'in' | 'out' }>({ isOpen: false, message: '' });
 
     const today = getBusinessDate();
+    
+    const self = useMemo(() => staff.find(s => s.uid === firebaseUser?.uid), [staff, firebaseUser]);
+
     const todaysShift = useMemo(() => {
-        if (!firebaseUser) return undefined;
+        if (!self) return undefined;
         return shifts.find(s => 
-            s.personelId === firebaseUser.uid && 
+            s.personelId === self.personelId && 
             isSameDay(new Date(s.tarih), today)
         );
-    }, [shifts, firebaseUser, today]);
+    }, [shifts, self, today]);
 
     const userBranch = useMemo(() => {
         if (!user?.branchId) return undefined;
@@ -261,17 +264,20 @@ const EmployeeClockInCard = () => {
 
 
 export default function DashboardPage() {
-  const { user, firebaseUser, shifts, cashEntries, salesReports, expenses, scoreEntries, performanceRules } = useApp();
+  const { user, firebaseUser, shifts, cashEntries, salesReports, expenses, scoreEntries, performanceRules, staff } = useApp();
 
   const { monthlyOvertime, pendingNetBalance, performanceScore } = useMemo(() => {
     if (!user || !firebaseUser) return { monthlyOvertime: 'N/A', pendingNetBalance: 0, performanceScore: { base: 'N/A', bonus: 'N/A' } };
     
+    const self = staff.find(s => s.uid === firebaseUser.uid);
+    if (!self) return { monthlyOvertime: 'N/A', pendingNetBalance: 0, performanceScore: { base: 'N/A', bonus: 'N/A' } };
+
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
     const userShifts = shifts.filter(s => 
-        s.personelId === firebaseUser.uid && 
+        s.personelId === self.personelId && 
         s.tarih && 
         isWithinInterval(new Date(s.tarih), { start: monthStart, end: monthEnd })
     );
@@ -293,7 +299,7 @@ export default function DashboardPage() {
     
     // --- Performance Score Calculation ---
     const personelEntries = scoreEntries.filter(entry => 
-        entry.personelId === firebaseUser.uid && 
+        entry.personelId === self.personelId && 
         isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
     );
 
@@ -337,7 +343,7 @@ export default function DashboardPage() {
         }
     };
 
-  }, [user, firebaseUser, shifts, cashEntries, expenses, scoreEntries, performanceRules]);
+  }, [user, firebaseUser, shifts, cashEntries, expenses, scoreEntries, performanceRules, staff]);
 
     const weeklySalesChartData = useMemo(() => {
         if (!salesReports || salesReports.length === 0) return [];
@@ -519,5 +525,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

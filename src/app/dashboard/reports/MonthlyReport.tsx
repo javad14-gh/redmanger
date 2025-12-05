@@ -104,7 +104,7 @@ export function MonthlyReport() {
     );
     
     const processPersonel = (personel: Personel) => {
-        const personShifts = monthlyShifts.filter(s => s.personelId === personel.uid);
+        const personShifts = monthlyShifts.filter(s => s.personelId === personel.personelId);
         
         let totalOvertimeMinutes = 0;
         let totalLatenessCount = 0;
@@ -113,8 +113,8 @@ export function MonthlyReport() {
         const workShifts = personShifts.filter(s => s.tur === 'calisma');
         
         // Correctly calculate worked days by counting unique days
-        const uniqueDays = new Set(personShifts.map(s => format(startOfDay(s.tarih), 'yyyy-MM-dd')));
-        const workedDays = uniqueDays.size;
+        const uniqueWorkDays = new Set(workShifts.map(s => format(startOfDay(s.tarih), 'yyyy-MM-dd')));
+        const workedDays = uniqueWorkDays.size;
 
 
         workShifts.forEach(shift => {

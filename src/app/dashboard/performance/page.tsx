@@ -54,7 +54,7 @@ const ManagerView = () => {
 
         const staffScores = activeStaff.map(personel => {
             const personelEntries = scoreEntries.filter(entry => 
-                entry.personelId === personel.uid && 
+                entry.personelId === personel.personelId && 
                 isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
             );
 
@@ -115,7 +115,7 @@ const ManagerView = () => {
         .sort((a,b) => b.tarih.getTime() - a.tarih.getTime())
         .slice(0, 10)
         .map(entry => {
-            const personel = staff.find(s => s.uid === entry.personelId);
+            const personel = staff.find(s => s.personelId === entry.personelId);
             return { ...entry, personelAdi: personel?.adi || 'Bilinmiyor' };
         });
     }, [scoreEntries, staff]);
@@ -189,7 +189,7 @@ const ManagerView = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 {manageableStaff.map(p => (
-                                    <SelectItem key={p.personelId} value={p.uid}>{p.adi}</SelectItem>
+                                    <SelectItem key={p.personelId} value={p.personelId}>{p.adi}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -310,17 +310,20 @@ const ManagerView = () => {
 };
 
 const EmployeeView = () => {
-    const { firebaseUser, scoreEntries, performanceRules } = useApp();
+    const { firebaseUser, scoreEntries, performanceRules, staff } = useApp();
     const [selectedMonth, setSelectedMonth] = useState(new Date());
 
     const { scoreData, monthlyEntries } = useMemo(() => {
         if (!firebaseUser) return { scoreData: null, monthlyEntries: [] };
 
+        const self = staff.find(s => s.uid === firebaseUser.uid);
+        if (!self) return { scoreData: null, monthlyEntries: [] };
+
         const monthStart = startOfMonth(selectedMonth);
         const monthEnd = endOfMonth(selectedMonth);
 
         const personelEntries = scoreEntries.filter(entry => 
-            entry.personelId === firebaseUser.uid && 
+            entry.personelId === self.personelId && 
             isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
         );
 
@@ -367,7 +370,7 @@ const EmployeeView = () => {
             },
             monthlyEntries: personelEntries.sort((a,b) => b.tarih.getTime() - a.tarih.getTime()),
         };
-    }, [firebaseUser, scoreEntries, performanceRules, selectedMonth]);
+    }, [firebaseUser, scoreEntries, performanceRules, selectedMonth, staff]);
 
     if (!scoreData) return null;
 
