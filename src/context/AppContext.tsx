@@ -17,7 +17,7 @@ import {
   EmailAuthProvider,
   updatePassword
 } from 'firebase/auth';
-import { doc, getDoc, collection, onSnapshot, query, Timestamp, enableNetwork } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot, query, Timestamp, enableNetwork, where, getDocs } from 'firebase/firestore';
 import { getOrRegisterMessagingToken } from '@/lib/firebase-messaging-client';
 
 
@@ -68,11 +68,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           // Ensure Firestore network is enabled before fetching
           await enableNetwork(db);
-          const userDocRef = doc(db, 'users', currentFirebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
+          
+          // Query the users collection to find the document with the matching UID
+          const usersQuery = query(collection(db, 'users'), where('uid', '==', currentFirebaseUser.uid));
+          const userQuerySnapshot = await getDocs(usersQuery);
 
-          if (userDocSnap.exists()) {
-            const userProfile = userDocSnap.data() as Personel;
+          if (!userQuerySnapshot.empty) {
+            const userDoc = userQuerySnapshot.docs[0]; // Get the first match
+            const userProfile = userDoc.data() as Personel;
             const appUser: AppUser = {
               name: userProfile.adi,
               email: userProfile.email,
@@ -83,11 +86,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
             setUser(appUser);
             
-            // Kullanıcı giriş yaptıktan sonra bildirim token'ını kaydetmeye çalış
-            getOrRegisterMessagingToken(currentFirebaseUser.uid);
+            // Register for push notifications
+            getOrRegisterMessagingToken(userDoc.id);
             
           } else {
-            console.warn(`User with UID ${currentFirebaseUser.uid} not found in Firestore. Logging out.`);
+            console.warn(`User profile with UID ${currentFirebaseUser.uid} not found in Firestore. Logging out.`);
             await signOut(auth);
             setUser(null);
             setFirebaseUser(null);
@@ -168,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return {
                     ...docData,
-                    [idField || name]: doc.id,
+                    [idField || 'personelId']: doc.id,
                 };
             });
             setter(data as any);
