@@ -54,7 +54,7 @@ const ManagerView = () => {
 
         const staffScores = activeStaff.map(personel => {
             const personelEntries = scoreEntries.filter(entry => 
-                entry.personelId === personel.personelId && 
+                entry.personelId === personel.uid && 
                 isWithinInterval(entry.tarih, { start: monthStart, end: monthEnd })
             );
 
@@ -115,7 +115,7 @@ const ManagerView = () => {
         .sort((a,b) => b.tarih.getTime() - a.tarih.getTime())
         .slice(0, 10)
         .map(entry => {
-            const personel = staff.find(s => s.personelId === entry.personelId);
+            const personel = staff.find(s => s.uid === entry.personelId);
             return { ...entry, personelAdi: personel?.adi || 'Bilinmiyor' };
         });
     }, [scoreEntries, staff]);
@@ -189,7 +189,7 @@ const ManagerView = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 {manageableStaff.map(p => (
-                                    <SelectItem key={p.personelId} value={p.personelId}>{p.adi}</SelectItem>
+                                    <SelectItem key={p.personelId} value={p.uid}>{p.adi}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>

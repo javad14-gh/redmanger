@@ -87,8 +87,8 @@ const DailyTrackingTab = () => {
     const populateShiftValues = useCallback(() => {
         const newShiftValues: Record<string, { girisSaati: string, cikisSaati: string }> = {};
         visibleStaff.forEach(p => {
-            const shift = dailyShifts.get(p.personelId);
-            newShiftValues[p.personelId] = {
+            const shift = dailyShifts.get(p.uid);
+            newShiftValues[p.uid] = {
                 girisSaati: shift?.girisSaati ? format(new Date(shift.girisSaati), 'HH:mm') : '',
                 cikisSaati: shift?.cikisSaati ? format(new Date(shift.cikisSaati), 'HH:mm') : ''
             };
@@ -266,10 +266,10 @@ const DailyTrackingTab = () => {
                         <TableBody>
                             {visibleStaff.length > 0 ? (
                                 visibleStaff.map((personel) => {
-                                    const isCurrentEditing = editingRow === personel.personelId;
-                                    const shift = dailyShifts.get(personel.personelId);
+                                    const isCurrentEditing = editingRow === personel.uid;
+                                    const shift = dailyShifts.get(personel.uid);
                                     const isLeave = shift?.tur === 'izinli';
-                                    const values = shiftValues[personel.personelId] || { girisSaati: '', cikisSaati: '' };
+                                    const values = shiftValues[personel.uid] || { girisSaati: '', cikisSaati: '' };
 
                                     return (
                                         <TableRow key={personel.personelId} className={isCurrentEditing ? 'bg-muted/50' : ''}>
@@ -285,9 +285,9 @@ const DailyTrackingTab = () => {
                                             <TableCell>
                                                 {isCurrentEditing ? (
                                                      <div className="flex items-center gap-1">
-                                                        <Input type="time" className="w-24 h-8" value={values.girisSaati} onChange={e => handleTimeChange(personel.personelId, 'girisSaati', e.target.value)} />
+                                                        <Input type="time" className="w-24 h-8" value={values.girisSaati} onChange={e => handleTimeChange(personel.uid, 'girisSaati', e.target.value)} />
                                                         <span>-</span>
-                                                        <Input type="time" className="w-24 h-8" value={values.cikisSaati} onChange={e => handleTimeChange(personel.personelId, 'cikisSaati', e.target.value)} />
+                                                        <Input type="time" className="w-24 h-8" value={values.cikisSaati} onChange={e => handleTimeChange(personel.uid, 'cikisSaati', e.target.value)} />
                                                     </div>
                                                 ) : (
                                                     isLeave ? (
@@ -297,18 +297,18 @@ const DailyTrackingTab = () => {
                                                     )
                                                 )}
                                             </TableCell>
-                                            <TableCell>{calculateStatus(personel.personelId)}</TableCell>
+                                            <TableCell>{calculateStatus(personel.uid)}</TableCell>
                                             <TableCell className="text-right">
                                                 {isCurrentEditing ? (
                                                      <div className="flex gap-2 justify-end">
-                                                        {renderQuickActionButton(personel.personelId)}
+                                                        {renderQuickActionButton(personel.uid)}
                                                         <Button size="icon" variant="ghost" onClick={handleCancelEdit}><X/></Button>
-                                                        <Button size="icon" onClick={() => handleSaveRow(personel.personelId)} disabled={savingStates[personel.personelId]}>
-                                                            {savingStates[personel.personelId] ? <Loader2 className="animate-spin" /> : <Save />}
+                                                        <Button size="icon" onClick={() => handleSaveRow(personel.uid)} disabled={savingStates[personel.uid]}>
+                                                            {savingStates[personel.uid] ? <Loader2 className="animate-spin" /> : <Save />}
                                                         </Button>
                                                     </div>
                                                 ) : (
-                                                     <Button size="icon" variant="ghost" onClick={() => handleEditRow(personel.personelId)} disabled={isLeave}>
+                                                     <Button size="icon" variant="ghost" onClick={() => handleEditRow(personel.uid)} disabled={isLeave}>
                                                         {isLeave ? <Ban className="text-muted-foreground" /> : <Pencil />}
                                                     </Button>
                                                 )}
@@ -358,8 +358,8 @@ const ShiftPlanningTab = () => {
     useEffect(() => {
         const newShiftData: typeof shiftData = {};
         visibleStaff.forEach(personel => {
-            const shift = dailyShifts.get(personel.personelId);
-            newShiftData[personel.personelId] = {
+            const shift = dailyShifts.get(personel.uid);
+            newShiftData[personel.uid] = {
                 tur: shift?.tur || 'calisma',
                 planliGiris: shift?.planliGiris ? format(new Date(shift.planliGiris), 'HH:mm') : '09:00',
             }
@@ -380,7 +380,7 @@ const ShiftPlanningTab = () => {
         const batch = writeBatch(db);
 
         for (const personel of visibleStaff) {
-            const personelId = personel.personelId;
+            const personelId = personel.uid;
             const data = shiftData[personelId];
             if (!data) continue;
 
@@ -439,7 +439,7 @@ const ShiftPlanningTab = () => {
         const staffOnly = visibleStaff.filter(p => p.rol === 'calisan');
 
         staffOnly.forEach(personel => {
-            const shift = dailyShifts.get(personel.personelId);
+            const shift = dailyShifts.get(personel.uid);
             text += `- ${personel.adi}: `;
             
             if (shift?.tur === 'izinli') {
@@ -468,7 +468,7 @@ const ShiftPlanningTab = () => {
 
 
     const renderShiftInfo = (personel: Personel) => {
-        const shift = dailyShifts.get(personel.personelId);
+        const shift = dailyShifts.get(personel.uid);
         if (shift?.tur === 'izinli') return <Badge variant="secondary">İzinli</Badge>;
         
         const sureDakika = shift?.planliSureDakika || (personel.tanimlananSaat || 8) * 60;
@@ -558,8 +558,8 @@ const ShiftPlanningTab = () => {
                                             <TableCell className="font-medium">{personel.adi}</TableCell>
                                             <TableCell>
                                                 <RadioGroup
-                                                    value={shiftData[personel.personelId]?.tur || 'calisma'}
-                                                    onValueChange={(val: 'calisma' | 'izinli') => handleShiftDataChange(personel.personelId, 'tur', val)}
+                                                    value={shiftData[personel.uid]?.tur || 'calisma'}
+                                                    onValueChange={(val: 'calisma' | 'izinli') => handleShiftDataChange(personel.uid, 'tur', val)}
                                                     className="flex gap-4"
                                                 >
                                                     <div className="flex items-center space-x-2">
@@ -573,9 +573,9 @@ const ShiftPlanningTab = () => {
                                                 </RadioGroup>
                                             </TableCell>
                                             <TableCell>
-                                                {shiftData[personel.personelId]?.tur === 'calisma' && (
+                                                {shiftData[personel.uid]?.tur === 'calisma' && (
                                                      <div className="flex items-center gap-2">
-                                                        <Input type="time" className="w-24 h-8" value={shiftData[personel.personelId]?.planliGiris} onChange={e => handleShiftDataChange(personel.personelId, 'planliGiris', e.target.value)} />
+                                                        <Input type="time" className="w-24 h-8" value={shiftData[personel.uid]?.planliGiris} onChange={e => handleShiftDataChange(personel.uid, 'planliGiris', e.target.value)} />
                                                         <Badge variant="outline">({personel.tanimlananSaat || 8} saat)</Badge>
                                                      </div>
                                                 )}

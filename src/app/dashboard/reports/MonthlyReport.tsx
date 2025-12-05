@@ -104,7 +104,7 @@ export function MonthlyReport() {
     );
     
     const processPersonel = (personel: Personel) => {
-        const personShifts = monthlyShifts.filter(s => s.personelId === personel.personelId);
+        const personShifts = monthlyShifts.filter(s => s.personelId === personel.uid);
         
         let totalOvertimeMinutes = 0;
         let totalLatenessCount = 0;
@@ -156,7 +156,7 @@ export function MonthlyReport() {
     
     // Handle employee role first
     if (user.role === 'calisan') {
-        const self = staffToProcess.find(s => s.personelId === firebaseUser.uid);
+        const self = staffToProcess.find(s => s.uid === firebaseUser.uid);
         const selfReport = self ? [processPersonel(self)] : [];
         return { reportData: selfReport, groupedReportData: {} };
     }

@@ -64,7 +64,7 @@ export function ShiftDetailsReport() {
     }
     
     if (selectedStaff !== 'all') {
-      staffForView = staffForView.filter(s => s.personelId === selectedStaff);
+      staffForView = staffForView.filter(s => s.uid === selectedStaff);
     }
 
     const monthlyShifts = shifts.filter(shift => 
@@ -176,7 +176,7 @@ export function ShiftDetailsReport() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">Tüm Personel</SelectItem>
-                     {staffOptionsForFilter.map(s => <SelectItem key={s.personelId} value={s.personelId}>{s.adi}</SelectItem>)}
+                     {staffOptionsForFilter.map(s => <SelectItem key={s.personelId} value={s.uid}>{s.adi}</SelectItem>)}
                 </SelectContent>
             </Select>
             {!isEmployee && (
@@ -210,7 +210,7 @@ export function ShiftDetailsReport() {
                            </div>
                         </TableCell>
                         {filteredStaff.length > 0 ? filteredStaff.map(personel => {
-                            const shift = getShiftForCell(personel.personelId, day);
+                            const shift = getShiftForCell(personel.uid, day);
                             const isLate = shift?.girisSaati && shift?.planliGiris && new Date(shift.girisSaati) > new Date(shift.planliGiris);
                             return (
                                 <TableCell key={personel.personelId} className="text-center p-2 text-xs">
