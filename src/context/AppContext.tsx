@@ -71,12 +71,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Ensure Firestore network is enabled before fetching
           await enableNetwork(db);
           
-          // Query the users collection to find the document with the matching UID
-          const usersQuery = query(collection(db, 'users'), where('uid', '==', currentFirebaseUser.uid));
-          const userQuerySnapshot = await getDocs(usersQuery);
+          // Use the auth UID to get the correct user document.
+          // This is crucial because documentID can differ from UID.
+          const userDocRef = doc(db, 'users', currentFirebaseUser.uid);
+          const userDoc = await getDoc(userDocRef);
 
-          if (!userQuerySnapshot.empty) {
-            const userDoc = userQuerySnapshot.docs[0]; // Get the first match
+          if (userDoc.exists()) {
             const userProfile = userDoc.data() as Personel;
             const appUser: AppUser = {
               name: userProfile.adi,
@@ -133,8 +133,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubscribers: (() => void)[] = [];
 
     const collectionsToSubscribe = [
-        { name: 'branches', setter: setBranches },
-        { name: 'users', setter: setStaff, idField: 'personelId' },
+        { name: 'branches', setter: setBranches, idField: 'subeId' },
+        { name: 'users', setter: setStaff, idField: 'personelId' }, // The ID field is the doc ID
         { name: 'scoreEntries', setter: setScoreEntries, idField: 'puanId', dateFields: ['tarih'] },
         { name: 'performanceRules', setter: setPerformanceRules, idField: 'ruleId' },
         { name: 'products', setter: setProducts, idField: 'urunId', dateFields: ['sonGuncelleme'] },
@@ -173,9 +173,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         }
                     });
                 }
+                // Use the document ID as the primary ID for the object
                 return {
                     ...docData,
-                    [idField || 'personelId']: doc.id,
+                    [idField || 'id']: doc.id,
                 };
             });
             setter(data as any);

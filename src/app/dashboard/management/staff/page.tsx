@@ -19,12 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 
 const staffSchema = z.object({
@@ -64,7 +65,6 @@ const StaffForm = ({ staffMember, onFormSubmit, closeDialog, currentUser }: { st
             tanimlananSaat: staffMember.tanimlananSaat || 8,
             canManageInventory: staffMember.canManageInventory || false,
             aktif: staffMember.aktif !== false, // default to true if undefined
-            ...(isNewUser ? {} : { password: '' }),
         } : {
             adi: '',
             email: '',
@@ -89,15 +89,6 @@ const StaffForm = ({ staffMember, onFormSubmit, closeDialog, currentUser }: { st
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {isNewUser && (
-                     <Alert variant="default">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Önemli Not</AlertTitle>
-                        <AlertDescription>
-                            Yeni personel eklemek iki adımlıdır: 1) Bu formla Firestore verisini oluşturun. 2) Firebase Authentication'da aynı e-posta/şifre ile kullanıcı oluşturun ve dönen UID'yi Firestore'daki `uid` alanına manuel olarak ekleyin.
-                        </AlertDescription>
-                    </Alert>
-                )}
                 <FormField control={form.control} name="adi" render={({ field }) => (
                     <FormItem><FormLabel>Ad Soyad</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
@@ -165,61 +156,47 @@ export default function StaffManagementPage() {
     const [editingStaff, setEditingStaff] = useState<Personel | undefined>(undefined);
     const [showInactive, setShowInactive] = useState(false);
     
-    /**
-     * This is a placeholder for a Cloud Function that would create the user in Firebase Auth.
-     * The client SDK cannot create users with email/password directly for security reasons.
-     * @param email 
-     * @param password 
-     * @returns A simulated Auth UID.
-     */
-    const createUserInAuth = async (email: string, password: string): Promise<string> => {
-        // In a real app, this would be a call to a Cloud Function.
-        // e.g., `const result = await httpsCallable(functions, 'createUser')({ email, password });`
-        // The function would return the new user's UID.
-        toast({
-           title: "Simülasyon Notu",
-           description: "Gerçek uygulamada, kullanıcı Firebase Auth'da oluşturulur ve gerçek UID döner. Bu sadece bir simülasyondur.",
-           variant: "default",
-        });
-        // For this prototype, we return a placeholder. You need to replace this with the real UID from Firebase Auth Console.
-        return `yeni-kullanici-uid-${Date.now()}`;
-    }
-
     const handleFormSubmit = async (data: any, isNew: boolean) => {
         if (!user) return;
         
         if (isNew) {
-            // In a real scenario, you'd call a Cloud Function to create the auth user
-            // and get the real UID back. For now, we're just creating the Firestore record.
              try {
-                const newStaffRef = doc(collection(db, "users"));
-                // The UID should come from your backend/cloud function after creating the auth user.
-                // For now, we'll use the document ID as a placeholder, but this MUST be updated manually.
-                const newUID = newStaffRef.id;
+                // This is a temporary admin-like action and should be a Cloud Function.
+                // It's included here to make the prototype usable.
+                const tempAdminAuth = auth;
+                const userCredential = await createUserWithEmailAndPassword(tempAdminAuth, data.email, data.password);
+                const newFirebaseUser = userCredential.user;
 
-                const newUser: Omit<Personel, 'personelId'> = {
-                    uid: newUID, // Placeholder UID. MUST BE UPDATED MANUALLY.
-                    adi: data.adi,
-                    email: data.email,
-                    rol: data.rol,
-                    subeId: data.subeId,
-                    tanimlananSaat: data.tanimlananSaat,
-                    canManageInventory: data.canManageInventory,
-                    avatarUrl: `https://picsum.photos/seed/${newStaffRef.id}/100/100`,
-                    aktif: data.aktif,
-                };
-                await setDoc(newStaffRef, newUser);
-                toast({ title: 'Başarılı', description: 'Yeni personel başarıyla Firestore\'a eklendi. Lütfen Auth UID\'sini manuel olarak güncelleyin.' });
-             } catch(e) {
+                if (newFirebaseUser) {
+                    const newStaffRef = doc(db, "users", newFirebaseUser.uid); // Use the auth UID as the document ID
+                    const newUser: Omit<Personel, 'personelId'> = {
+                        uid: newFirebaseUser.uid,
+                        adi: data.adi,
+                        email: data.email,
+                        rol: data.rol,
+                        subeId: data.subeId,
+                        tanimlananSaat: data.tanimlananSaat,
+                        canManageInventory: data.canManageInventory,
+                        avatarUrl: `https://picsum.photos/seed/${newFirebaseUser.uid}/100/100`,
+                        aktif: data.aktif,
+                    };
+                    await setDoc(newStaffRef, newUser);
+                    toast({ title: 'Başarılı', description: 'Yeni personel başarıyla oluşturuldu ve sisteme eklendi.' });
+                }
+             } catch(e: any) {
                  console.error(e);
-                 toast({ title: 'Firestore Hatası', description: 'Personel Firestore\'a eklenemedi.', variant: 'destructive'});
+                 let message = 'Personel oluşturulamadı.';
+                 if (e.code === 'auth/email-already-in-use') {
+                     message = 'Bu e-posta adresi zaten kullanımda.';
+                 }
+                 toast({ title: 'Kullanıcı Oluşturma Hatası', description: message, variant: 'destructive'});
              }
 
         } else {
              // Update existing user
             try {
+                // Here, editingStaff.personelId is actually the UID because of how we fetch data
                 const staffRef = doc(db, 'users', editingStaff!.personelId);
-                // We don't update the UID here. It's considered immutable.
                 await updateDoc(staffRef, {
                     adi: data.adi,
                     email: data.email,
@@ -229,6 +206,8 @@ export default function StaffManagementPage() {
                     canManageInventory: data.canManageInventory,
                     aktif: data.aktif,
                 });
+                // Note: You can't easily update email/password from the client SDK like this.
+                // This would also typically require a Cloud Function for security reasons.
                 toast({ title: 'Başarılı', description: 'Personel bilgileri güncellendi.' });
             } catch(e) {
                 console.error(e);

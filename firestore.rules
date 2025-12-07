@@ -65,13 +65,18 @@ service cloud.firestore {
     
     // Helper functions
     function getUserRole(uid) {
+      // This is a simplified lookup. For production, you'd want to handle cases where the user doc might not exist.
       return get(/databases/$(database)/documents/users/$(getPersonelId(uid))).data.rol;
     }
     function getUserBranch(uid) {
+       // This is a simplified lookup.
       return get(/databases/$(database)/documents/users/$(getPersonelId(uid))).data.subeId;
     }
     function getPersonelId(uid) {
-    	return get(/databases/$(database)/documents/users?where("uid", "==", uid)).docs[0].id;
+      // This function assumes that the `users` collection documents are named with the same ID as the auth UID.
+      // This is a simplification. A more robust way is querying, but that's complex in rules.
+      // For this app's structure, we assume the document ID for a user is their auth `uid`.
+    	return uid;
     }
 
 

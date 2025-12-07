@@ -8,7 +8,7 @@ export interface Sube {
 export type UserRole = 'genel-mudur' | 'sube-muduru' | 'calisan' | 'sistem-yoneticisi';
 
 export interface Personel {
-  personelId: string; // The document ID
+  personelId: string; // The document ID, which is the same as the auth UID
   uid: string; // The Firebase Authentication UID
   subeId: string;
   adi: string;
