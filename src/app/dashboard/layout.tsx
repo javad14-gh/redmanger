@@ -6,13 +6,14 @@ import { useApp } from '@/hooks/use-app';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, SidebarInset, SidebarFooter, useSidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import Logo from '@/components/Logo';
 import { UserNav } from '@/components/UserNav';
-import { AreaChart, Bot, Clock, FileText, LayoutDashboard, ListChecks, Loader2, PanelLeftClose, Settings, Users, Warehouse, Wallet, Award, BookCopy } from 'lucide-react';
+import { AreaChart, Bot, Clock, FileText, LayoutDashboard, ListChecks, Loader2, PanelLeftClose, Settings, Users, Warehouse, Wallet, Award, BookCopy, PackageSearch } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Panel' },
   { href: '/dashboard/shifts', icon: Clock, label: 'Vardiyalar', roles: ['sube-muduru'] },
+  { href: '/dashboard/requests', icon: PackageSearch, label: 'Malzeme Talepleri' },
   { href: '/dashboard/inventory', icon: Warehouse, label: 'Depo', permission: 'canManageInventory' },
   { href: '/dashboard/cash-register', icon: Wallet, label: 'Kasa', roles: ['genel-mudur', 'sube-muduru'] },
   { href: '/dashboard/checklists', icon: ListChecks, label: 'Kontrol Listeleri' },

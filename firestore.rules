@@ -46,10 +46,34 @@ service cloud.firestore {
       allow create: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
     
-    // Helper function to get user's role
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.rol;
+    // Rules for Material Requests
+    match /materialRequests/{requestId} {
+      // Users can create requests for their own branch
+      allow create: if request.auth != null 
+                    && request.resource.data.branchId == getUserBranch(request.auth.uid)
+                    && request.resource.data.requesterId == getPersonelId(request.auth.uid);
+      // Users can only read their own requests
+      // Branch managers can read all requests in their branch
+      allow read: if request.auth != null 
+                  && (getPersonelId(request.auth.uid) == resource.data.requesterId 
+                      || (getUserRole(request.auth.uid) == 'sube-muduru' && getUserBranch(request.auth.uid) == resource.data.branchId));
+      // Only branch managers can update requests in their branch
+      allow update: if request.auth != null
+                    && getUserRole(request.auth.uid) == 'sube-muduru'
+                    && getUserBranch(request.auth.uid) == resource.data.branchId;
     }
+    
+    // Helper functions
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(getPersonelId(uid))).data.rol;
+    }
+    function getUserBranch(uid) {
+      return get(/databases/$(database)/documents/users/$(getPersonelId(uid))).data.subeId;
+    }
+    function getPersonelId(uid) {
+    	return get(/databases/$(database)/documents/users?where("uid", "==", uid)).docs[0].id;
+    }
+
 
     // Checklist Templates:
     // - Read: Any authenticated user can read templates (needed for daily checklists)

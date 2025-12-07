@@ -117,6 +117,26 @@ export interface Expense {
   hesaplandi: boolean;
 }
 
+// === MATERIAL REQUEST TYPES START ===
+export type MaterialRequestUrgency = 'Düşük' | 'Normal' | 'Acil';
+export type MaterialRequestStatus = 'Beklemede' | 'Onaylandı' | 'Reddedildi' | 'Temin Edildi';
+
+export interface MaterialRequest {
+  requestId: string;
+  branchId: string;
+  requesterId: string; // Personel ID
+  requesterName: string;
+  itemName: string;
+  urgency: MaterialRequestUrgency;
+  currentStock: string;
+  status: MaterialRequestStatus;
+  createdAt: Date;
+  notes?: string;
+  managerNotes?: string; // Notes from the manager
+}
+// === MATERIAL REQUEST TYPES END ===
+
+
 // === SALES REPORT TYPES START ===
 
 export interface SalesReportItem {

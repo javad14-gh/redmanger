@@ -5,7 +5,7 @@
 import React from 'react';
 import { createContext, useState, useMemo, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppUser, Sube, Personel, Urun, Vardiya, KontrolListesi, StokSayimi, CashEntry, Expense, SalesReport, PuanGirdisi, PerformanceRule } from '@/lib/types';
+import { AppUser, Sube, Personel, Urun, Vardiya, KontrolListesi, StokSayimi, CashEntry, Expense, SalesReport, PuanGirdisi, PerformanceRule, MaterialRequest } from '@/lib/types';
 import * as mockData from '@/lib/mock-data';
 import { auth, db } from '@/lib/firebase';
 import {
@@ -37,6 +37,7 @@ interface AppContextType {
   cashEntries: CashEntry[];
   expenses: Expense[];
   salesReports: SalesReport[];
+  materialRequests: MaterialRequest[];
   checklists: KontrolListesi[];
   isLoading: boolean;
 }
@@ -56,6 +57,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [salesReports, setSalesReports] = useState<SalesReport[]>([]);
+  const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -124,6 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSalesReports([]);
       setScoreEntries([]);
       setPerformanceRules([]);
+      setMaterialRequests([]);
       return;
     }
 
@@ -155,6 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }, idField: 'cashEntryId', dateFields: ['islemTarihi', 'zamanDamgasi', 'teslimTarihi'] },
         { name: 'expenses', setter: setExpenses, idField: 'expenseId', dateFields: ['tarih', 'zamanDamgasi'] },
         { name: 'salesReports', setter: setSalesReports, idField: 'reportId', dateFields: ['reportDate', 'createdAt'] },
+        { name: 'materialRequests', setter: setMaterialRequests, idField: 'requestId', dateFields: ['createdAt'] },
     ];
     
     collectionsToSubscribe.forEach(({ name, setter, idField, dateFields }) => {
@@ -249,10 +253,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cashEntries,
       expenses,
       salesReports,
+      materialRequests,
       checklists: mockData.kontrolListeleri, // This is now obsolete but kept for now to avoid breaking other parts
       isLoading,
     }),
-    [user, firebaseUser, isLoading, branches, staff, scoreEntries, performanceRules, products, shifts, stockCounts, cashEntries, expenses, salesReports]
+    [user, firebaseUser, isLoading, branches, staff, scoreEntries, performanceRules, products, shifts, stockCounts, cashEntries, expenses, salesReports, materialRequests]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
