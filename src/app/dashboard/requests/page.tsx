@@ -36,17 +36,16 @@ type RequestFormData = z.infer<typeof requestSchema>;
 
 // Employee View: Form to create a request and a list of their own requests
 const EmployeeView = () => {
-    const { user, firebaseUser, staff, materialRequests } = useApp();
+    const { user, firebaseUser, materialRequests } = useApp();
     const { toast } = useToast();
     const form = useForm<RequestFormData>({
         resolver: zodResolver(requestSchema),
         defaultValues: { itemName: '', urgency: 'Normal', currentStock: '', notes: '' },
     });
 
-    const self = useMemo(() => staff.find(s => s.uid === firebaseUser?.uid), [staff, firebaseUser]);
 
     const onSubmit = async (data: RequestFormData) => {
-        if (!self || !user?.branchId) {
+        if (!firebaseUser || !user?.branchId) {
             toast({ title: 'Hata', description: 'Kullanıcı veya şube bilgisi bulunamadı.', variant: 'destructive' });
             return;
         }
@@ -55,8 +54,8 @@ const EmployeeView = () => {
             const newRequestRef = doc(collection(db, "materialRequests"));
             const newRequest: Omit<MaterialRequest, 'requestId'> = {
                 branchId: user.branchId,
-                requesterId: self.personelId,
-                requesterName: self.adi,
+                requesterId: firebaseUser.uid, // Use UID as the requester ID
+                requesterName: user.name,
                 itemName: data.itemName,
                 urgency: data.urgency as MaterialRequestUrgency,
                 currentStock: data.currentStock,
@@ -75,9 +74,9 @@ const EmployeeView = () => {
 
     const myRequests = useMemo(() => 
         materialRequests
-            .filter(req => req.requesterId === self?.personelId)
+            .filter(req => req.requesterId === firebaseUser?.uid)
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
-        [materialRequests, self]
+        [materialRequests, firebaseUser]
     );
 
     return (

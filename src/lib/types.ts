@@ -8,7 +8,7 @@ export interface Sube {
 export type UserRole = 'genel-mudur' | 'sube-muduru' | 'calisan' | 'sistem-yoneticisi';
 
 export interface Personel {
-  personelId: string; // The document ID, which is the same as the auth UID
+  personelId: string; // The document ID
   uid: string; // The Firebase Authentication UID
   subeId: string;
   adi: string;
@@ -124,7 +124,7 @@ export type MaterialRequestStatus = 'Beklemede' | 'Onaylandı' | 'Reddedildi' | 
 export interface MaterialRequest {
   requestId: string;
   branchId: string;
-  requesterId: string; // Personel ID
+  requesterId: string; // This will now store the Firebase Auth UID
   requesterName: string;
   itemName: string;
   urgency: MaterialRequestUrgency;

@@ -50,13 +50,13 @@ service cloud.firestore {
     match /materialRequests/{requestId} {
       // Users can create requests for their own branch
       allow create: if request.auth != null 
-                    && request.resource.data.branchId == getUserBranch(request.auth.uid)
-                    && request.resource.data.requesterId == getPersonelId(request.auth.uid);
+                    && request.resource.data.branchId == getUserData(request.auth.uid).subeId
+                    && request.resource.data.requesterId == request.auth.uid; // Use UID for creation check
       // Users can only read their own requests
       // Branch managers can read all requests in their branch
       allow read: if request.auth != null 
-                  && (getPersonelId(request.auth.uid) == resource.data.requesterId 
-                      || (getUserRole(request.auth.uid) == 'sube-muduru' && getUserBranch(request.auth.uid) == resource.data.branchId));
+                  && (resource.data.requesterId == request.auth.uid // Employee can read their own
+                      || (getUserRole(request.auth.uid) == 'sube-muduru' && getUserBranch(request.auth.uid) == resource.data.branchId)); // Manager can read branch requests
       // Only branch managers can update requests in their branch
       allow update: if request.auth != null
                     && getUserRole(request.auth.uid) == 'sube-muduru'
@@ -65,18 +65,14 @@ service cloud.firestore {
     
     // Helper functions
     function getUserRole(uid) {
-      // This is a simplified lookup. For production, you'd want to handle cases where the user doc might not exist.
-      return get(/databases/$(database)/documents/users/$(getPersonelId(uid))).data.rol;
+      return getUserData(uid).rol;
     }
     function getUserBranch(uid) {
-       // This is a simplified lookup.
-      return get(/databases/$(database)/documents/users/$(getPersonelId(uid))).data.subeId;
+      return getUserData(uid).subeId;
     }
-    function getPersonelId(uid) {
-      // This function assumes that the `users` collection documents are named with the same ID as the auth UID.
-      // This is a simplification. A more robust way is querying, but that's complex in rules.
-      // For this app's structure, we assume the document ID for a user is their auth `uid`.
-    	return uid;
+    function getUserData(uid) {
+        // Since we store docs with the UID, we can directly get it.
+    	return get(/databases/$(database)/documents/users/$(uid)).data;
     }
 
 
