@@ -19,16 +19,13 @@ service cloud.firestore {
     }
     
 		match /cashEntries/{cashEntryId} {
-       allow read: if getUserRole(request.auth.uid) == 'genel-mudur';
-       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru'
+       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru' || getUserRole(request.auth.uid) == 'genel-mudur';
     }
 		match /expenses/{expensesId} {
-       allow read: if getUserRole(request.auth.uid) == 'genel-mudur';
-       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru'
+       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru' || getUserRole(request.auth.uid) == 'genel-mudur';
     }
     match /salesReports/{salesReportsId} {
-       allow read: if getUserRole(request.auth.uid) == 'genel-mudur';
-       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru'
+       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru' || getUserRole(request.auth.uid) == 'genel-mudur';
     }
     // Rules for shifts
     match /shifts/{shiftId} {
@@ -66,17 +63,16 @@ service cloud.firestore {
     }
     
     // Helper functions
+    function getUserData(uid) {
+        // Since we store docs with the UID, we can directly get it.
+    	return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
     function getUserRole(uid) {
       return getUserData(uid).rol;
     }
     function getUserBranch(uid) {
       return getUserData(uid).subeId;
     }
-    function getUserData(uid) {
-        // Since we store docs with the UID, we can directly get it.
-    	return get(/databases/$(database)/documents/users/$(uid)).data;
-    }
-
 
     // Checklist Templates:
     // - Read: Any authenticated user can read templates (needed for daily checklists)
