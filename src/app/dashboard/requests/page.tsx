@@ -54,7 +54,7 @@ const EmployeeView = () => {
             const newRequestRef = doc(collection(db, "materialRequests"));
             const newRequest: Omit<MaterialRequest, 'requestId'> = {
                 branchId: user.branchId,
-                requesterId: firebaseUser.uid, 
+                requesterId: firebaseUser.uid,
                 requesterName: user.name,
                 itemName: data.itemName,
                 urgency: data.urgency as MaterialRequestUrgency,
@@ -141,16 +141,14 @@ const ManagerView = () => {
     const [isSaving, setIsSaving] = useState(false);
     
     const branchRequests = useMemo(() => {
-        if (!user || !user.branchId) return [];
-        return materialRequests
-            .filter(req => req.branchId === user.branchId)
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        if (!user) return [];
+        return materialRequests.filter(req => user.role === 'genel-mudur' || req.branchId === user.branchId);
     }, [materialRequests, user]);
 
     const filteredRequests = useMemo(() =>
         filter === 'all' ? branchRequests : branchRequests.filter(req => req.status === filter),
         [branchRequests, filter]
-    );
+    ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     
     const handleOpenModal = (request: MaterialRequest) => {
         setEditingRequest(request);
@@ -176,14 +174,14 @@ const ManagerView = () => {
         }
     };
     
-    const urgencyVariant = (urgency: MaterialRequestUrgency): 'destructive' | 'secondary' | 'default' => {
+    const urgencyVariant = (urgency: MaterialRequestUrgency): 'destructive' | 'secondary' | 'outline' => {
         switch (urgency) {
             case 'Acil':
                 return 'destructive';
             case 'Normal':
-                return 'default';
-            case 'Düşük':
                 return 'secondary';
+            case 'Düşük':
+                return 'outline';
             default:
                 return 'secondary';
         }
@@ -269,10 +267,9 @@ export default function MaterialRequestsPage() {
         return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
-    if (!user) return null;
-
-    // General Manager doesn't see this page.
-    if (user.role === 'genel-mudur') {
+    if (!user || user.role === 'genel-mudur') return null;
+    
+    if (!user.branchId && user.role !== 'genel-mudur') {
         return (
             <div className="flex flex-col gap-8">
                  <div className="space-y-1">
@@ -283,10 +280,10 @@ export default function MaterialRequestsPage() {
                 </div>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Erişim Bilgisi</CardTitle>
+                        <CardTitle>Erişim Kısıtlandı</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p>Bu özellik şube içi operasyonlar için tasarlanmıştır ve genel müdür görünümünde aktif değildir.</p>
+                        <p>Malzeme talebi oluşturmak veya görüntülemek için bir şubeye atanmış olmanız gerekmektedir.</p>
                     </CardContent>
                 </Card>
             </div>
