@@ -54,7 +54,7 @@ const EmployeeView = () => {
             const newRequestRef = doc(collection(db, "materialRequests"));
             const newRequest: Omit<MaterialRequest, 'requestId'> = {
                 branchId: user.branchId,
-                requesterId: firebaseUser.uid, // Use UID as the requester ID
+                requesterId: firebaseUser.uid, 
                 requesterName: user.name,
                 itemName: data.itemName,
                 urgency: data.urgency as MaterialRequestUrgency,
@@ -144,7 +144,7 @@ const ManagerView = () => {
         if (!user || !user.branchId) return [];
         return materialRequests
             .filter(req => req.branchId === user.branchId)
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }, [materialRequests, user]);
 
     const filteredRequests = useMemo(() =>
@@ -177,11 +177,15 @@ const ManagerView = () => {
     };
     
     const urgencyVariant = (urgency: MaterialRequestUrgency): 'destructive' | 'secondary' | 'default' => {
-        switch(urgency) {
-            case 'Acil': return 'destructive';
-            case 'Normal': return 'default';
-            case 'Düşük': return 'secondary';
-            default: return 'secondary';
+        switch (urgency) {
+            case 'Acil':
+                return 'destructive';
+            case 'Normal':
+                return 'default';
+            case 'Düşük':
+                return 'secondary';
+            default:
+                return 'secondary';
         }
     }
 
