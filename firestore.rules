@@ -74,7 +74,7 @@ service cloud.firestore {
       return getUserData(uid).rol;
     }
     function getUserBranch(uid) {
-      return getUserData(uid).subeId;
+      return getUserData(uid).branchId;
     }
 
     // Checklist Templates:
