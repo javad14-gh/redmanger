@@ -267,6 +267,28 @@ export default function MaterialRequestsPage() {
 
     if (!user) return null;
 
+    // General Manager doesn't see this page.
+    if (user.role === 'genel-mudur') {
+        return (
+            <div className="flex flex-col gap-8">
+                 <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">
+                        <PackageSearch className="inline-block mr-2" />
+                        Malzeme Talepleri
+                    </h1>
+                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Erişim Bilgisi</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p>Bu özellik şube içi operasyonlar için tasarlanmıştır ve genel müdür görünümünde aktif değildir.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-8">
             <div className="space-y-1">
@@ -282,17 +304,6 @@ export default function MaterialRequestsPage() {
             </div>
 
             {user.role === 'sube-muduru' ? <ManagerView /> : <EmployeeView />}
-            
-            {user.role === 'genel-mudur' && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Erişim Bilgisi</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p>Bu özellik şube içi operasyonlar için tasarlanmıştır ve genel müdür görünümünde aktif değildir.</p>
-                    </CardContent>
-                </Card>
-            )}
 
         </div>
     );
