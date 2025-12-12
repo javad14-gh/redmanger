@@ -8,10 +8,8 @@ import { AreaChart, Clock, ListChecks, Warehouse, Wallet, Users, AlertCircle, Ho
 import Link from 'next/link';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Vardiya, SalesReport, Sube, PerformanceRuleCategory, Personel } from '@/lib/types';
-import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, compareAsc, getDay, isSameDay, startOfDay } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes, addDays, format, parse, isSameDay, startOfDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { getBusinessDate, getDistanceInMeters } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -345,56 +343,6 @@ export default function DashboardPage() {
 
   }, [user, firebaseUser, shifts, cashEntries, expenses, scoreEntries, performanceRules, staff]);
 
-    const weeklySalesChartData = useMemo(() => {
-        if (!salesReports || salesReports.length === 0) return [];
-        
-        const dayOfWeekMap: { [key: number]: string } = {
-            1: 'Pazartesi', 2: 'Sali', 3: 'Carsamba',
-            4: 'Persembe', 5: 'Cuma', 6: 'Cumartesi', 0: 'Pazar'
-        };
-        const allDays = Object.values(dayOfWeekMap);
-
-        const salesByDay = salesReports.reduce((acc, report) => {
-            const reportDate = new Date(report.reportDate);
-            const dayKey = format(reportDate, 'yyyy-MM-dd');
-            const dayOfWeek = getDay(reportDate); 
-            const dayName = dayOfWeekMap[dayOfWeek];
-            
-            const total = report.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-
-            if (!acc[dayKey]) {
-                acc[dayKey] = { 
-                    date: reportDate, // Keep as a Date object initially
-                    isMonday: dayOfWeek === 1,
-                    ...Object.fromEntries(allDays.map(day => [day, null])) // Initialize all days with null
-                };
-            }
-            if(dayName) {
-                // Set the value for the correct day, leave others as null
-                (acc[dayKey] as any)[dayName] = ((acc[dayKey] as any)[dayName] || 0) + total;
-            }
-
-            return acc;
-        }, {} as Record<string, { date: Date, isMonday: boolean, [key: string]: number | string | boolean | null | Date }>);
-        
-        // Now sort by date and then format the date for display
-        return Object.values(salesByDay)
-          .sort((a, b) => compareAsc(a.date, b.date))
-          .map(item => ({...item, date: format(item.date, 'd MMM', { locale: tr})}))
-          .slice(-45);
-
-    }, [salesReports]);
-    
-    const chartConfig = {
-      Pazartesi: { label: 'Pazartesi', color: '#f7b705' },
-      Sali: { label: 'Salı', color: '#f70505' },
-      Carsamba: { label: 'Çarşamba', color: '#039103' },
-      Persembe: { label: 'Perşembe', color: '#04d8db' },
-      Cuma: { label: 'Cuma', color: '#043adb' },
-      Cumartesi: { label: 'Cumartesi', color: '#db04d8' },
-      Pazar: { label: 'Pazar', color: '#0d000d' },
-    };
-
 
   if (!user) return null;
 
@@ -461,58 +409,6 @@ export default function DashboardPage() {
             </Link>
         }
       </div>
-
-       {/* --- Sales Chart --- */}
-       {(user.role === 'genel-mudur' || user.role === 'sube-muduru') && weeklySalesChartData.length > 0 && (
-         <Card>
-           <CardHeader>
-             <CardTitle className="flex items-center gap-2">
-                <BarChart2 />
-                Haftalık Satış Trendleri
-             </CardTitle>
-             <CardDescription>
-                AI ile işlenen raporlardan elde edilen günlük ciro, haftanın günlerine göre ayrıştırılmıştır.
-             </CardDescription>
-           </CardHeader>
-           <CardContent>
-             <ChartContainer config={chartConfig} className="h-[300px] w-full">
-               <LineChart data={weeklySalesChartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                 <CartesianGrid vertical={false} />
-                 <XAxis
-                   dataKey="date"
-                   tickLine={false}
-                   tickMargin={10}
-                   axisLine={false}
-                 />
-                 <YAxis
-                  tickFormatter={(value) => `₺${(Number(value) / 1000).toFixed(value > 0 ? 1 : 0)}k`}
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                 />
-                <Tooltip
-                    cursor={true}
-                    content={<ChartTooltipContent
-                        formatter={(value, name) => {
-                            const numValue = Number(value);
-                            return numValue > 0 ? `₺${numValue.toFixed(2)}` : null;
-                        }}
-                        indicator="line"
-                    />}
-                />
-                 <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: '30px'}}/>
-                 {Object.entries(chartConfig).map(([key, config]) => (
-                    <Line key={key} type="monotone" dataKey={key} stroke={config.color} strokeWidth={2} name={config.label} connectNulls />
-                 ))}
-                 {weeklySalesChartData.map((item, index) => (
-                    item.isMonday && <ReferenceLine key={`ref-${index}`} x={item.date} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                 ))}
-               </LineChart>
-             </ChartContainer>
-           </CardContent>
-         </Card>
-       )}
-
 
        {/* --- QUICK LINKS --- */}
        <div>
