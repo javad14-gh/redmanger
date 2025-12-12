@@ -133,19 +133,19 @@ const EmployeeView = () => {
 
 // Manager View: Table of all requests with actions
 const ManagerView = () => {
-    const { user, materialRequests, staff } = useApp();
+    const { user, materialRequests } = useApp();
     const { toast } = useToast();
     const [filter, setFilter] = useState<MaterialRequestStatus | 'all'>('Beklemede');
     const [editingRequest, setEditingRequest] = useState<MaterialRequest | null>(null);
     const [managerNotes, setManagerNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     
-    const branchRequests = useMemo(() =>
-        materialRequests
-            .filter(req => req.branchId === user?.branchId)
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
-        [materialRequests, user]
-    );
+    const branchRequests = useMemo(() => {
+        if (!user || !user.branchId) return [];
+        return materialRequests
+            .filter(req => req.branchId === user.branchId)
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    }, [materialRequests, user]);
 
     const filteredRequests = useMemo(() =>
         filter === 'all' ? branchRequests : branchRequests.filter(req => req.status === filter),

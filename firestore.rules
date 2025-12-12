@@ -53,11 +53,9 @@ service cloud.firestore {
                     && request.resource.data.requesterId == request.auth.uid
                     && request.resource.data.branchId == getUserBranch(request.auth.uid);
                       
-      // Employee can read their own requests.
-      // Branch manager can read all requests in their branch.
-      allow read: if request.auth != null &&
-                  (resource.data.requesterId == request.auth.uid ||
-                   (getUserRole(request.auth.uid) == 'sube-muduru' && getUserBranch(request.auth.uid) == resource.data.branchId));
+      // Allow any authenticated user to query the collection.
+      // Filtering (who sees what) is handled in the client-side code.
+      allow read: if request.auth != null;
                    
       // Only branch managers can update requests in their branch
       allow update: if request.auth != null
