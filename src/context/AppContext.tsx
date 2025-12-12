@@ -132,37 +132,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const unsubscribers: (() => void)[] = [];
 
-    const collectionsToSubscribe = [
+    // Collections that are small and needed globally
+    const globalCollections = [
         { name: 'branches', setter: setBranches, idField: 'subeId' },
-        { name: 'users', setter: setStaff, idField: 'personelId' }, // The ID field is the doc ID
-        { name: 'scoreEntries', setter: setScoreEntries, idField: 'puanId', dateFields: ['tarih'] },
+        { name: 'users', setter: setStaff, idField: 'personelId' },
         { name: 'performanceRules', setter: setPerformanceRules, idField: 'ruleId' },
-        { name: 'products', setter: setProducts, idField: 'urunId', dateFields: ['sonGuncelleme'] },
-        { name: 'shifts', setter: setShifts, idField: 'vardiyaId', dateFields: ['tarih', 'planliGiris', 'girisSaati', 'cikisSaati'] },
-        { name: 'stockCounts', setter: setStockCounts, idField: 'sayimId', dateFields: ['zamanDamgasi'] },
-        { name: 'cashEntries', setter: (data: any[]) => {
-            const migratedData = data.map(entry => {
-                if (entry.nakitMiktari && !entry.dagilim) {
-                    return {
-                        ...entry,
-                        dagilim: [{
-                            personelId: entry.personelId,
-                            adi: entry.personelAdi || 'Bilinmiyor',
-                            miktar: entry.nakitMiktari
-                        }]
-                    };
-                }
-                return entry;
-            });
-            setCashEntries(migratedData);
-        }, idField: 'cashEntryId', dateFields: ['islemTarihi', 'zamanDamgasi', 'teslimTarihi'] },
-        { name: 'expenses', setter: setExpenses, idField: 'expenseId', dateFields: ['tarih', 'zamanDamgasi'] },
-        { name: 'salesReports', setter: setSalesReports, idField: 'reportId', dateFields: ['reportDate', 'createdAt'] },
-        { name: 'materialRequests', setter: setMaterialRequests, idField: 'requestId', dateFields: ['createdAt'] },
+    ];
+
+    globalCollections.forEach(({ name, setter, idField }) => {
+        const q = query(collection(db, name));
+        const unsub = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({
+                ...doc.data(),
+                [idField]: doc.id,
+            }));
+            setter(data as any);
+        }, (error) => console.error(`Error fetching ${name}:`, error));
+        unsubscribers.push(unsub);
+    });
+    
+    // Collections that are large and should be filtered by branch
+    const branchSpecificCollections = [
+      { name: 'shifts', setter: setShifts, idField: 'vardiyaId', dateFields: ['tarih', 'planliGiris', 'girisSaati', 'cikisSaati'] },
+      { name: 'products', setter: setProducts, idField: 'urunId', dateFields: ['sonGuncelleme'] },
+      { name: 'stockCounts', setter: setStockCounts, idField: 'sayimId', dateFields: ['zamanDamgasi'] },
+      { name: 'cashEntries', setter: (data: any[]) => {
+          const migratedData = data.map(entry => {
+              if (entry.nakitMiktari && !entry.dagilim) {
+                  return { ...entry, dagilim: [{ personelId: entry.personelId, adi: entry.personelAdi || 'Bilinmiyor', miktar: entry.nakitMiktari }] };
+              }
+              return entry;
+          });
+          setCashEntries(migratedData);
+      }, idField: 'cashEntryId', dateFields: ['islemTarihi', 'zamanDamgasi', 'teslimTarihi'] },
+      { name: 'expenses', setter: setExpenses, idField: 'expenseId', dateFields: ['tarih', 'zamanDamgasi'] },
+      { name: 'salesReports', setter: setSalesReports, idField: 'reportId', dateFields: ['reportDate', 'createdAt'] },
+      { name: 'materialRequests', setter: setMaterialRequests, idField: 'requestId', dateFields: ['createdAt'] },
+      { name: 'scoreEntries', setter: setScoreEntries, idField: 'puanId', dateFields: ['tarih'] },
     ];
     
-    collectionsToSubscribe.forEach(({ name, setter, idField, dateFields }) => {
-        const q = query(collection(db, name));
+    branchSpecificCollections.forEach(({ name, setter, idField, dateFields }) => {
+        let q;
+        // General manager can see all, others are filtered by branch
+        if(user?.role === 'genel-mudur') {
+            q = query(collection(db, name));
+        } else if (user?.branchId) {
+            q = query(collection(db, name), where('subeId', '==', user.branchId));
+        } else if (name === 'materialRequests' && user?.role === 'calisan') {
+             q = query(collection(db, name), where('requesterId', '==', firebaseUser.uid));
+        } else {
+            // If a user has no branch and is not GM, they see nothing from these collections
+            setter([]);
+            return;
+        }
+
         const unsub = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => {
                 const docData = doc.data();
@@ -173,22 +196,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         }
                     });
                 }
-                // Use the document ID as the primary ID for the object
-                return {
-                    ...docData,
-                    [idField || 'id']: doc.id,
-                };
+                return { ...docData, [idField || 'id']: doc.id };
             });
-            setter(data as any);
+             setter(data as any);
         }, (error) => console.error(`Error fetching ${name}:`, error));
         unsubscribers.push(unsub);
     });
 
-
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [firebaseUser]);
+  }, [firebaseUser, user]);
 
 
   const login = async (email: string, password: string): Promise<boolean> => {

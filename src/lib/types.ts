@@ -218,7 +218,7 @@ export interface TamamlananKontrolListesiOgesi {
 export interface TamamlananKontrolListesi {
   tamamlananKontrolListesiId: string;
   subeId: string;
-  kontrolListesiId: 'acilis' | 'kapanis';
+kontrolListesiId: 'acilis' | 'kapanis';
   tamamlayan: string; // personelId
   zamanDamgasi: Date;
   ogeler: TamamlananKontrolListesiOgesi[];
