@@ -19,18 +19,21 @@ service cloud.firestore {
     }
     
 		match /cashEntries/{cashEntryId} {
-       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru' || getUserRole(request.auth.uid) == 'genel-mudur';
+       allow read: if getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru';
+       allow write: if getUserRole(request.auth.uid) == 'sube-muduru';
     }
 		match /expenses/{expensesId} {
-       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru' || getUserRole(request.auth.uid) == 'genel-mudur';
+       allow read: if getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru';
+       allow write: if getUserRole(request.auth.uid) == 'sube-muduru';
     }
     match /salesReports/{salesReportsId} {
-       allow read, write: if getUserRole(request.auth.uid) == 'sube-muduru' || getUserRole(request.auth.uid) == 'genel-mudur';
+       allow read: if getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru';
+       allow write: if getUserRole(request.auth.uid) == 'sube-muduru';
     }
     // Rules for shifts
     match /shifts/{shiftId} {
     	allow read: if request.auth != null;
-      allow read, write: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
+      allow write: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
 
     // Rules for performance
