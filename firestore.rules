@@ -2,12 +2,24 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to create documents in the 'products' collection.
+    // --- Helper Functions ---
+    function getUserData(uid) {
+      // Since we store docs with the UID, we can directly get it.
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+    function getUserRole(uid) {
+      return getUserData(uid).rol;
+    }
+    function getUserBranch(uid) {
+      return getUserData(uid).branchId;
+    }
+
+    // --- Collection Rules ---
+
     match /products/{productId} {
       allow read, write: if request.auth != null;
     }
     
-    // Allow authenticated users to read branches and users
     match /branches/{branchId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && getUserRole(request.auth.uid) == 'genel-mudur';
@@ -18,35 +30,36 @@ service cloud.firestore {
        allow write: if request.auth.uid == userId || (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
     
-		match /cashEntries/{cashEntryId} {
+    match /cashEntries/{cashEntryId} {
        allow read: if getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru';
        allow write: if getUserRole(request.auth.uid) == 'sube-muduru';
     }
+    
 		match /expenses/{expensesId} {
        allow read: if getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru';
        allow write: if getUserRole(request.auth.uid) == 'sube-muduru';
     }
+
     match /salesReports/{salesReportsId} {
        allow read: if getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru';
        allow write: if getUserRole(request.auth.uid) == 'sube-muduru';
     }
-    // Rules for shifts
+    
     match /shifts/{shiftId} {
     	allow read: if request.auth != null;
       allow write: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
 
-    // Rules for performance
     match /performanceRules/{ruleId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
+
     match /scoreEntries/{entryId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
     
-    // Rules for Material Requests
     match /materialRequests/{requestId} {
       // Allow creation if the requester UID and branch ID match the authenticated user's data
       allow create: if request.auth != null
@@ -63,33 +76,15 @@ service cloud.firestore {
                     && getUserBranch(request.auth.uid) == resource.data.branchId;
     }
     
-    // Helper functions
-    function getUserData(uid) {
-        // Since we store docs with the UID, we can directly get it.
-    	return get(/databases/$(database)/documents/users/$(uid)).data;
-    }
-    function getUserRole(uid) {
-      return getUserData(uid).rol;
-    }
-    function getUserBranch(uid) {
-      return getUserData(uid).branchId;
-    }
-
-    // Checklist Templates:
-    // - Read: Any authenticated user can read templates (needed for daily checklists)
-    // - Write (Create, Update, Delete): Only managers can modify templates
     match /checklistTemplates/{templateId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (getUserRole(request.auth.uid) == 'genel-mudur' || getUserRole(request.auth.uid) == 'sube-muduru');
     }
     
-    // Completed Checklists:
-    // Any authenticated user can create and update their daily checklist instances
     match /completedChecklists/{completedId} {
         allow read, create, update: if request.auth != null;
     }
     
-    // Rules for stock counts
     match /stockCounts/{countId} {
        allow read, create: if request.auth != null;
     }
