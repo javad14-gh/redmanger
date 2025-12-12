@@ -187,7 +187,7 @@ const ManagerView = () => {
             default:
                 return 'secondary';
         }
-    }
+    };
 
     return (
         <>
