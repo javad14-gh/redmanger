@@ -577,9 +577,10 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
             }
             if (entry.type === 'expense') {
                  if (personelFilter !== 'all' && entry.personelId !== personelFilter) {
-                    return sum;
+                    return sum; // Don't include other people's expenses when filtering by person
                  }
-                 if(entry.hesaplandi) return sum - entry.tutar;
+                 // Subtract expense regardless of 'hesaplandi' status for total calculation
+                 return sum - entry.tutar;
             }
             return sum;
         }, 0);
