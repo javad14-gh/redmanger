@@ -71,12 +71,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Ensure Firestore network is enabled before fetching
           await enableNetwork(db);
           
-          // Fetch user profile based on UID
-          const userDocRef = doc(db, 'users', currentFirebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+          // Query for the user profile using the UID field
+          const usersRef = collection(db, 'users');
+          const q = query(usersRef, where("uid", "==", currentFirebaseUser.uid));
+          const querySnapshot = await getDocs(q);
 
-
-          if (userDoc.exists()) {
+          if (!querySnapshot.empty) {
+            // Should only be one document, so we take the first
+            const userDoc = querySnapshot.docs[0];
             const userProfile = userDoc.data() as Personel;
             const appUser: AppUser = {
               name: userProfile.adi,
