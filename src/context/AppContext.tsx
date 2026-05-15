@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React from 'react';
@@ -68,16 +66,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(currentFirebaseUser);
         
         try {
-          // Ensure Firestore network is enabled before fetching
           await enableNetwork(db);
           
-          // Query for the user profile using the UID field
+          // Use query with where to find the user profile regardless of the document ID
           const usersRef = collection(db, 'users');
           const q = query(usersRef, where("uid", "==", currentFirebaseUser.uid));
           const querySnapshot = await getDocs(q);
 
           if (!querySnapshot.empty) {
-            // Should only be one document, so we take the first
             const userDoc = querySnapshot.docs[0];
             const userProfile = userDoc.data() as Personel;
             const appUser: AppUser = {
@@ -90,17 +86,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
             setUser(appUser);
             
-            // Register for push notifications
             getOrRegisterMessagingToken(userDoc.id);
             
           } else {
-            console.warn(`User profile with UID ${currentFirebaseUser.uid} not found in Firestore. Logging out.`);
+            console.warn(`User profile for UID ${currentFirebaseUser.uid} not found.`);
             await signOut(auth);
             setUser(null);
             setFirebaseUser(null);
           }
         } catch (error) {
-          console.error("Error fetching user document from Firestore:", error);
+          console.error("Error during authentication process:", error);
           await signOut(auth);
           setUser(null);
           setFirebaseUser(null);
@@ -116,7 +111,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Only set up listeners if there is a logged-in user.
     if (!firebaseUser) {
       setBranches([]);
       setStaff([]);
@@ -134,7 +128,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const unsubscribers: (() => void)[] = [];
 
-    // Collections that are small and needed globally
     const globalCollections = [
         { name: 'branches', setter: setBranches, idField: 'subeId' },
         { name: 'users', setter: setStaff, idField: 'personelId' },
@@ -153,7 +146,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         unsubscribers.push(unsub);
     });
     
-    // Collections that are large and should be filtered by branch
     const branchSpecificCollections = [
       { name: 'shifts', setter: setShifts, idField: 'vardiyaId', dateFields: ['tarih', 'planliGiris', 'girisSaati', 'cikisSaati'] },
       { name: 'products', setter: setProducts, idField: 'urunId', dateFields: ['sonGuncelleme'] },
@@ -175,7 +167,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     branchSpecificCollections.forEach(({ name, setter, idField, dateFields }) => {
         let q;
-        // General manager can see all, others are filtered by branch
         if(user?.role === 'genel-mudur') {
             q = query(collection(db, name));
         } else if (user?.branchId) {
@@ -183,7 +174,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else if (name === 'materialRequests' && user?.role === 'calisan') {
              q = query(collection(db, name), where('requesterId', '==', firebaseUser.uid));
         } else {
-            // If a user has no branch and is not GM, they see nothing from these collections
             setter([]);
             return;
         }
@@ -208,7 +198,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [firebaseUser, user]);
+  }, [firebaseUser, user?.role, user?.branchId]);
 
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -235,7 +225,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const changePassword = async (currentPassword: string, newPassword: string): Promise<{success: boolean, error?: string}> => {
     if (!firebaseUser || !firebaseUser.email) {
-      return { success: false, error: 'Kullanıcı bulunamadı.'};
+      return { success: false, error: 'Kullanıcı bulunamadی.'};
     }
     
     const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
@@ -249,9 +239,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Password change error:", error);
         let errorMessage = "Bir hata oluştu.";
         if (error.code === 'auth/wrong-password') {
-            errorMessage = "Mevcut şifreniz yanlış.";
+            errorMessage = "موجود شيفره غلط است.";
         } else if (error.code === 'auth/weak-password') {
-            errorMessage = "Yeni şifre çok zayıf. En az 6 karakter olmalıdır.";
+            errorMessage = "شيفره جديد خيلي ضعيف است.";
         }
         return { success: false, error: errorMessage };
     }
@@ -275,7 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       expenses,
       salesReports,
       materialRequests,
-      checklists: mockData.kontrolListeleri, // This is now obsolete but kept for now to avoid breaking other parts
+      checklists: mockData.kontrolListeleri,
       isLoading,
     }),
     [user, firebaseUser, isLoading, branches, staff, scoreEntries, performanceRules, products, shifts, stockCounts, cashEntries, expenses, salesReports, materialRequests]
