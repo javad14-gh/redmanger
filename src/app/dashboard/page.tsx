@@ -118,7 +118,7 @@ const EmployeeClockInCard = () => {
                 setStatusMessage('Bugünkü vardiyanız tamamlandı.');
             } else {
                 if (todaysShift.planliGiris) {
-                    setStatusMessage(`Vardiyanız saat ${format(new Date(todaysShift.planliGiris), 'HH:mm')}'da başlıyor. Giriş yapmaya hazırsınız.`);
+                    setStatusMessage(`Vardiyanız saat ${format(new Date(todaysShift.planliGiris), 'HH:mm')}'da başlıyor. Giriش yapmaya hazırsınız.`);
                 } else {
                     setStatusMessage('Bugün için giriş yapmaya hazırsınız.');
                 }
@@ -168,7 +168,7 @@ const EmployeeClockInCard = () => {
                         message = 'Konumunuz şu anda tespit edilemiyor. Lütfen açık bir alanda tekrar deneyin veya internet bağlantınızı kontrol edin.';
                         break;
                     case 3: // TIMEOUT
-                        message = 'Konum bilgisi alınırken zaman aşımı oluştu. Lütfen sinyalinizin güçlü olduğundan emin olup tekrar deneyin.';
+                        message = 'Konum bilgisi alınırken zaman aşımı oluştu. Lütfen sinyalinizin güçlü olduğundan emin olup tekrar deneyین.';
                         break;
                     default:
                         message = 'Konum bilgisi alınamadı. Bu özelliği kullanmak için konum izni vermeniz gerekmektedir.';
@@ -195,10 +195,10 @@ const EmployeeClockInCard = () => {
             const now = Timestamp.now();
             if(action === 'in') {
                 await updateDoc(shiftRef, { girisSaati: now });
-                toast({ title: 'Başarılı!', description: `Giriş saatiniz ${format(now.toDate(), 'HH:mm')} olarak kaydedildi.`});
+                toast({ title: 'Başارılı!', description: `Giriş saatiniz ${format(now.toDate(), 'HH:mm')} olarak kaydedildi.`});
             } else {
                 await updateDoc(shiftRef, { cikisSaati: now });
-                 toast({ title: 'Başarılı!', description: `Çıkış saatiniz ${format(now.toDate(), 'HH:mm')} olarak kaydedildi.`});
+                 toast({ title: 'Başارılı!', description: `Çıkış saatiniz ${format(now.toDate(), 'HH:mm')} olarak kaydedildi.`});
             }
         } catch (error) {
             console.error("Error saving clock action:", error);
@@ -237,7 +237,7 @@ const EmployeeClockInCard = () => {
                     Hızlı Giriş / Çıkış
                 </CardTitle>
                 <CardDescription>
-                    Konumunuz doğrulandıktan sonra giriş veya çıkış saatinizi kaydedin.
+                    Konumunuz doğrulandıktan sonra giriş veya çıkış saatinizi kaydedین.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

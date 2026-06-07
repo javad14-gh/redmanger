@@ -15,7 +15,7 @@ import {
   EmailAuthProvider,
   updatePassword
 } from 'firebase/auth';
-import { doc, getDoc, collection, onSnapshot, query, Timestamp, enableNetwork, where, getDocs } from 'firebase/firestore';
+import { doc, collection, onSnapshot, query, Timestamp, enableNetwork, where, getDocs } from 'firebase/firestore';
 import { getOrRegisterMessagingToken } from '@/lib/firebase-messaging-client';
 
 
@@ -225,7 +225,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const changePassword = async (currentPassword: string, newPassword: string): Promise<{success: boolean, error?: string}> => {
     if (!firebaseUser || !firebaseUser.email) {
-      return { success: false, error: 'Kullanıcı bulunamadی.'};
+      return { success: false, error: 'Kullanıcı bulunamadı.'};
     }
     
     const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
@@ -239,9 +239,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Password change error:", error);
         let errorMessage = "Bir hata oluştu.";
         if (error.code === 'auth/wrong-password') {
-            errorMessage = "موجود شيفره غلط است.";
+            errorMessage = "Mevcut şifre yanlış.";
         } else if (error.code === 'auth/weak-password') {
-            errorMessage = "شيفره جديد خيلي ضعيف است.";
+            errorMessage = "Yeni şifره خيلى ضعيف است.";
         }
         return { success: false, error: errorMessage };
     }

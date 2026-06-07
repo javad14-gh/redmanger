@@ -40,7 +40,7 @@ const DailyEntryTab = ({ staff, branchId, personelId, todaysEntry, pendingAmount
     useEffect(() => {
         const initialDistribution: Record<string, number | ''> = {};
         branchManagers.forEach(manager => {
-            const existing = todaysEntry?.dagilim.find(d => d.personelId === manager.personelId);
+            const existing = todaysEntry?.dagilim?.find(d => d.personelId === manager.personelId);
             initialDistribution[manager.personelId] = existing ? existing.miktar : '';
         });
         setDistribution(initialDistribution);
@@ -79,7 +79,7 @@ const DailyEntryTab = ({ staff, branchId, personelId, todaysEntry, pendingAmount
             .filter((item): item is NakitDagilimDetayi => item !== null);
         
         if (dagilim.length === 0 && totalAmount > 0) {
-             toast({ title: 'Hata', description: 'Lütfen en az bir yönetici için tutar girin.', variant: 'destructive' });
+             toast({ title: 'Hata', description: 'Lütfen en az bir yönetici برای tutar girin.', variant: 'destructive' });
             return;
         }
 
@@ -234,7 +234,7 @@ const BatchHandoverTab = ({ pendingEntries, branchId }: { pendingEntries: CashEn
     const handleBatchSubmit = async () => {
         const entryIdsToUpdate = Object.keys(selectedEntries).filter(id => selectedEntries[id]);
         if(entryIdsToUpdate.length === 0) {
-            toast({ title: 'Uyarı', description: 'Lütfen teslim edilecek en az bir kayıt seçin.', variant: 'default' });
+            toast({ title: 'Uyarı', description: 'Lütfen teslim edilecek en az bir kayıt seçین.', variant: 'default' });
             return;
         }
 
@@ -253,7 +253,7 @@ const BatchHandoverTab = ({ pendingEntries, branchId }: { pendingEntries: CashEn
             });
 
             await batch.commit();
-            toast({ title: 'Başarılı', description: `${entryIdsToUpdate.length} adet kayıt başarıyla teslim edildi olarak işaretlendi.`});
+            toast({ title: 'Başارılı', description: `${entryIdsToUpdate.length} adet kayıt başarıyla teslim edildi olarak işaretlendi.`});
             setSelectedEntries({});
         } catch (error) {
             console.error("Error during batch handover: ", error);
@@ -346,7 +346,7 @@ const AddExpenseTab = ({ user, branchId, personelId, branchExpenses, onToggleExp
         }
         const numericAmount = Number(amount);
         if (isNaN(numericAmount) || numericAmount <= 0) {
-            toast({ title: 'Hata', description: 'Lütfen geçerli bir tutar girin.', variant: 'destructive' });
+            toast({ title: 'Hata', description: 'Lütfen geçerli bir tutar girین.', variant: 'destructive' });
             return;
         }
         if (!description.trim()) {
@@ -517,7 +517,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
         const cash: ReportItem[] = cashEntries.map(e => ({ 
             ...e, 
             type: 'cash', 
-            totalAmount: e.dagilim.reduce((sum, d) => sum + d.miktar, 0)
+            totalAmount: e.dagilim?.reduce((sum, d) => sum + d.miktar, 0) || 0
         }));
         const expenseItems: ReportItem[] = expenses.map(e => ({ ...e, type: 'expense', islemTarihi: e.tarih }));
         return [...cash, ...expenseItems];
@@ -552,7 +552,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
         if (personelFilter !== 'all') {
             result = result.filter(entry => {
                 if (entry.type === 'cash') {
-                    return entry.dagilim.some(d => d.personelId === personelFilter);
+                    return entry.dagilim?.some(d => d.personelId === personelFilter);
                 }
                 if (entry.type === 'expense') {
                     // Only show expenses if the selected person created them
@@ -570,16 +570,16 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
         return filteredEntries.reduce((sum, entry) => {
             if (entry.type === 'cash') {
                 if (personelFilter !== 'all') {
-                    const personAmount = entry.dagilim.find(d => d.personelId === personelFilter)?.miktar || 0;
+                    const personAmount = entry.dagilim?.find(d => d.personelId === personelFilter)?.miktar || 0;
                     return sum + personAmount;
                 }
                 return sum + entry.totalAmount;
             }
             if (entry.type === 'expense') {
                  if (personelFilter !== 'all' && entry.personelId !== personelFilter) {
-                    return sum; // Don't include other people's expenses when filtering by person
+                    return sum;
                  }
-                 // Subtract expense regardless of 'hesaplandi' status for total calculation
+                 // Fix: Always subtract expenses from total in reporting view
                  return sum - entry.tutar;
             }
             return sum;
@@ -601,7 +601,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
                 ];
                 body.push(mainRow);
 
-                if(entry.dagilim.length > 0){
+                if(entry.dagilim && entry.dagilim.length > 0){
                     entry.dagilim.forEach(d => {
                         const subRow = ['', `  - ${d.adi}`, '', '', `+${d.miktar.toFixed(2)}`];
                         body.push(subRow);
@@ -762,7 +762,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
                                                 <div className="flex items-center gap-2">
                                                     <Badge variant='secondary' className='border-green-300'>Kasa Girişi</Badge>
                                                 </div>
-                                                {entry.dagilim.length > 0 && (
+                                                {entry.dagilim && entry.dagilim.length > 0 && (
                                                     <div className="pl-4 mt-1 text-xs text-muted-foreground space-y-1">
                                                         {entry.dagilim.map((d, i) => {
                                                             if (personelFilter !== 'all' && d.personelId !== personelFilter) return null;
@@ -797,7 +797,7 @@ const ReportingTab = ({ cashEntries, expenses, branches, staff, showBranchFilter
                                     )}
                                 </TableCell>
                                 <TableCell className={cn("text-right font-medium", entry.type === 'expense' && "text-destructive")}>
-                                     {entry.type === 'cash' ? `+₺${personelFilter !== 'all' ? (entry.dagilim.find(d => d.personelId === personelFilter)?.miktar || 0).toFixed(2) : entry.totalAmount.toFixed(2)}` : `-₺${entry.tutar.toFixed(2)}`}
+                                     {entry.type === 'cash' ? `+₺${personelFilter !== 'all' ? (entry.dagilim?.find(d => d.personelId === personelFilter)?.miktar || 0).toFixed(2) : entry.totalAmount.toFixed(2)}` : `-₺${entry.tutar.toFixed(2)}`}
                                 </TableCell>
                             </TableRow>
                         )) : (
@@ -924,8 +924,8 @@ export default function CashRegisterPage() {
                 </h1>
                 <p className="text-muted-foreground">
                     {isGeneralManager
-                        ? 'Nakit akışını şube bazında analiz edin ve raporları görüntüleyin.'
-                        : 'Günlük nakit akışını yönetin, harcamaları kaydedin ve raporları görüntüleyin.'
+                        ? 'Nakit akışını şوبه bazında analiz edin ve raporları görüntüleyin.'
+                        : 'Günlük nakit akışını yönetin, harcamaları kaydedین ve raporları görüntüleyin.'
                     }
                 </p>
             </div>
