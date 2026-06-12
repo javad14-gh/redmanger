@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Inter } from 'next/font/google';
 
 export const metadata: Metadata = {
-  title: 'Red Fries Manager',
+  title: 'NP Manager',
   description: 'Restoran Yönetimi İçin Firebase Uygulaması',
   manifest: '/manifest.webmanifest',
   icons: {

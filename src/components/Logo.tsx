@@ -7,7 +7,7 @@ const Logo = ({ className }: { className?: string }) => {
       {/* Using a standard img tag to prevent potential build errors with next/image on server environments */}
       <img
         src="/logo.png"
-        alt="Red Fries Logo"
+        alt="Sample Logo"
         className="h-full w-full object-contain"
       />
     </div>

@@ -1,4 +1,4 @@
-# **App Name**: Red Fries Manager
+# **App Name**: NP Manager
 
 ## Core Features:
 
@@ -12,7 +12,7 @@
 
 ## Style Guidelines:
 
-- Primary color: Saturated red (#E63946), inspired by the brand's association with 'Red Fries,' conveying energy and appetite.
+- Primary color: Saturated red (#E63946), inspired by the brand's association with 'Sample,' conveying energy and appetite.
 - Background color: Light gray (#F4F3F6), a desaturated tint of the primary, providing a clean and neutral backdrop.
 - Accent color: Analogous orange (#F4A261), offering a vibrant contrast for calls to action and important elements.
 - Headline font: 'Poppins', a geometric sans-serif, chosen for its contemporary and fashionable style to draw attention to important headlines.

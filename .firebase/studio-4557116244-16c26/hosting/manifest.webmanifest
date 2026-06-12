@@ -1,6 +1,6 @@
 {
-  "name": "Red Fries Manager",
-  "short_name": "Red Fries",
+  "name": "NP Manager",
+  "short_name": "Sample",
   "description": "Restoran Yönetimi İçin Firebase Uygulaması",
   "start_url": "/dashboard",
   "display": "standalone",

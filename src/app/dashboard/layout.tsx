@@ -114,7 +114,7 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3">
              <Logo className="w-10 h-10" />
             <div className="flex flex-col">
-              <span className="font-headline text-lg font-semibold text-sidebar-foreground">Red Fries</span>
+              <span className="font-headline text-lg font-semibold text-sidebar-foreground">Sample</span>
               <span className="text-xs text-sidebar-foreground/70">Manager</span>
             </div>
           </div>

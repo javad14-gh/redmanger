@@ -64,7 +64,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <Logo />
-          <CardTitle className="font-headline text-2xl">Red Fries Manager</CardTitle>
+          <CardTitle className="font-headline text-2xl">NP Manager</CardTitle>
           <CardDescription>Devam etmek için giriş yapın</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

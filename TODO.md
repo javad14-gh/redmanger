@@ -1,6 +1,6 @@
-# Red Fries Manager Uygulaması Kullanıcı Kılavuzu
+# NP Manager Uygulaması Kullanıcı Kılavuzu
 
-Red Fries Manager uygulamasına hoş geldiniz! Bu kılavuz, uygulamanın temel özelliklerini tanımanıza ve günlük görevlerinizi yönetmek için en iyi şekilde kullanmanıza yardımcı olacaktır.
+NP Manager uygulamasına hoş geldiniz! Bu kılavuz, uygulamanın temel özelliklerini tanımanıza ve günlük görevlerinizi yönetmek için en iyi şekilde kullanmanıza yardımcı olacaktır.
 
 ## 1. Sisteme Giriş
 
